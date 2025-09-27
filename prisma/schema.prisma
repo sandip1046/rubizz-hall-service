@@ -1,0 +1,289 @@
+// Hall Management Service Database Schema
+// This schema defines the data models for event hall management, bookings, quotations, and resource management
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Hall Management Models
+model Hall {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  capacity    Int
+  area        Float?   // in square feet
+  location    String
+  floor       String?
+  amenities   String[] // Array of amenity names
+  
+  // Pricing
+  baseRate    Float    @default(0)
+  hourlyRate  Float?   // Optional hourly rate
+  dailyRate   Float?   // Daily rate
+  weekendRate Float?   // Weekend surcharge
+  
+  // Status and availability
+  isActive    Boolean  @default(true)
+  isAvailable Boolean  @default(true)
+  
+  // Images and media
+  images      String[] // Array of image URLs
+  floorPlan   String?  // Floor plan image URL
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  bookings    HallBooking[]
+  quotations  HallQuotation[]
+  lineItems   HallLineItem[]
+  
+  @@map("halls")
+}
+
+model HallBooking {
+  id          String   @id @default(cuid())
+  hallId      String
+  customerId  String   // Reference to customer service
+  
+  // Booking details
+  eventName   String
+  eventType   EventType
+  startDate   DateTime
+  endDate     DateTime
+  startTime   String   // HH:MM format
+  endTime     String   // HH:MM format
+  duration    Int      // in hours
+  
+  // Guest information
+  guestCount  Int
+  specialRequests String?
+  
+  // Pricing
+  baseAmount  Float
+  additionalCharges Float @default(0)
+  discount    Float    @default(0)
+  taxAmount   Float    @default(0)
+  totalAmount Float
+  
+  // Payment
+  depositAmount Float?
+  depositPaid   Boolean @default(false)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMode   PaymentMode?
+  
+  // Status
+  status      BookingStatus @default(PENDING)
+  isConfirmed Boolean       @default(false)
+  isCancelled Boolean       @default(false)
+  cancellationReason String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  
+  // Relations
+  hall        Hall @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  quotation   HallQuotation?
+  lineItems   HallLineItem[]
+  payments    HallPayment[]
+  
+  @@map("hall_bookings")
+}
+
+model HallQuotation {
+  id          String   @id @default(cuid())
+  hallId      String
+  customerId  String
+  
+  // Quotation details
+  quotationNumber String @unique
+  eventName   String
+  eventType   EventType
+  eventDate   DateTime
+  startTime   String
+  endTime     String
+  guestCount  Int
+  
+  // Pricing breakdown
+  baseAmount  Float
+  lineItems   HallLineItem[]
+  subtotal    Float
+  taxAmount   Float
+  totalAmount Float
+  
+  // Validity
+  validUntil  DateTime
+  isAccepted  Boolean @default(false)
+  isExpired   Boolean @default(false)
+  
+  // Status
+  status      QuotationStatus @default(DRAFT)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  acceptedAt  DateTime?
+  
+  // Relations
+  hall        Hall @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  booking     HallBooking?
+  
+  @@map("hall_quotations")
+}
+
+model HallLineItem {
+  id          String   @id @default(cuid())
+  hallId      String
+  quotationId String?
+  bookingId   String?
+  
+  // Item details
+  itemType    LineItemType
+  itemName    String
+  description String?
+  quantity    Int      @default(1)
+  unitPrice   Float
+  totalPrice  Float
+  
+  // Optional specifications
+  specifications Json? // Flexible JSON for item-specific details
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  hall        Hall @relation(fields: [hallId], references: [id], onDelete: Cascade)
+  quotation   HallQuotation? @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  booking     HallBooking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  @@map("hall_line_items")
+}
+
+model HallPayment {
+  id          String   @id @default(cuid())
+  bookingId   String
+  
+  // Payment details
+  amount      Float
+  paymentType PaymentType
+  paymentMode PaymentMode
+  transactionId String?
+  reference   String?
+  
+  // Status
+  status      PaymentStatus @default(PENDING)
+  isRefunded  Boolean       @default(false)
+  refundAmount Float?
+  refundReason String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  processedAt DateTime?
+  refundedAt  DateTime?
+  
+  // Relations
+  booking     HallBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  @@map("hall_payments")
+}
+
+model HallAvailability {
+  id          String   @id @default(cuid())
+  hallId      String
+  
+  // Availability details
+  date        DateTime @db.Date
+  startTime   String   // HH:MM format
+  endTime     String   // HH:MM format
+  isAvailable Boolean  @default(true)
+  reason      String?  // Reason for unavailability
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([hallId, date, startTime, endTime])
+  @@map("hall_availability")
+}
+
+// Enums
+enum EventType {
+  WEDDING
+  CORPORATE
+  BIRTHDAY
+  ANNIVERSARY
+  CONFERENCE
+  SEMINAR
+  PARTY
+  MEETING
+  OTHER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
+  NET_BANKING
+  WALLET
+  CHEQUE
+  BANK_TRANSFER
+}
+
+enum PaymentType {
+  DEPOSIT
+  ADVANCE
+  FULL_PAYMENT
+  REFUND
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum LineItemType {
+  HALL_RENTAL
+  CHAIR
+  TABLE
+  DECORATION
+  LIGHTING
+  AV_EQUIPMENT
+  CATERING
+  SECURITY
+  GENERATOR
+  CLEANING
+  PARKING
+  OTHER
+}
