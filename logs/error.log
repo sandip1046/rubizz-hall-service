@@ -1,0 +1,22 @@
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  command: { name: 'select', args: [ '2' ] },
+  level: 'error',
+  message: 'Redis Queue client error: ERR Only 0th database is supported! Selected DB: 2',
+  stack: 'ReplyError: ERR Only 0th database is supported! Selected DB: 2\n' +
+    '    at parseError (D:\\Rubizz hotel\\Server\\rubizz-hall-service\\node_modules\\redis-parser\\lib\\parser.js:179:12)\n' +
+    '    at parseType (D:\\Rubizz hotel\\Server\\rubizz-hall-service\\node_modules\\redis-parser\\lib\\parser.js:302:14)',
+  timestamp: '2025-10-09 11:27:00.394'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  command: { name: 'select', args: [ '1' ] },
+  level: 'error',
+  message: 'Redis Cache client error: ERR Only 0th database is supported! Selected DB: 1',
+  stack: 'ReplyError: ERR Only 0th database is supported! Selected DB: 1\n' +
+    '    at parseError (D:\\Rubizz hotel\\Server\\rubizz-hall-service\\node_modules\\redis-parser\\lib\\parser.js:179:12)\n' +
+    '    at parseType (D:\\Rubizz hotel\\Server\\rubizz-hall-service\\node_modules\\redis-parser\\lib\\parser.js:302:14)',
+  timestamp: '2025-10-09 11:27:00.410'
+}

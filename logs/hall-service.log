@@ -1,0 +1,112 @@
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  database: 'MongoDB',
+  level: 'info',
+  message: 'Database connected successfully',
+  timestamp: '2025-10-09 11:26:59.756'
+}
+{
+  message: 'Database connected successfully',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:26:59.767'
+}
+{
+  message: 'Redis Session client connected',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:26:59.976'
+}
+{
+  message: 'Redis Cache client connected',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:26:59.988'
+}
+{
+  message: 'Redis Queue client connected',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:26:59.999'
+}
+{
+  message: 'Redis Session client ready',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:27:00.374'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  command: { name: 'select', args: [ '2' ] },
+  level: 'error',
+  message: 'Redis Queue client error: ERR Only 0th database is supported! Selected DB: 2',
+  stack: 'ReplyError: ERR Only 0th database is supported! Selected DB: 2\n' +
+    '    at parseError (D:\\Rubizz hotel\\Server\\rubizz-hall-service\\node_modules\\redis-parser\\lib\\parser.js:179:12)\n' +
+    '    at parseType (D:\\Rubizz hotel\\Server\\rubizz-hall-service\\node_modules\\redis-parser\\lib\\parser.js:302:14)',
+  timestamp: '2025-10-09 11:27:00.394'
+}
+{
+  message: 'Redis Queue client ready',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:27:00.407'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  command: { name: 'select', args: [ '1' ] },
+  level: 'error',
+  message: 'Redis Cache client error: ERR Only 0th database is supported! Selected DB: 1',
+  stack: 'ReplyError: ERR Only 0th database is supported! Selected DB: 1\n' +
+    '    at parseError (D:\\Rubizz hotel\\Server\\rubizz-hall-service\\node_modules\\redis-parser\\lib\\parser.js:179:12)\n' +
+    '    at parseType (D:\\Rubizz hotel\\Server\\rubizz-hall-service\\node_modules\\redis-parser\\lib\\parser.js:302:14)',
+  timestamp: '2025-10-09 11:27:00.410'
+}
+{
+  message: 'Redis Cache client ready',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:27:00.415'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  session: { host: 'crack-kingfish-11262.upstash.io', port: 6379 },
+  cache: { host: 'touching-lobster-11264.upstash.io', port: 6379 },
+  queue: { host: 'cool-teal-11267.upstash.io', port: 6379 },
+  level: 'info',
+  message: 'All Redis clients connected successfully',
+  timestamp: '2025-10-09 11:27:00.418'
+}
+{
+  message: 'Redis connected successfully',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:27:00.420'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  port: 3007,
+  environment: 'development',
+  level: 'info',
+  message: 'Hall Management Service started',
+  timestamp: '2025-10-09 11:27:00.435'
+}
+{
+  message: 'Received SIGINT, starting graceful shutdown...',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-09 11:27:10.504'
+}
