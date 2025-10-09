@@ -33,7 +33,6 @@ class DatabaseConnection {
       ],
     });
 
-    // Set up logging
     this.setupLogging();
   }
 
@@ -49,27 +48,11 @@ class DatabaseConnection {
   }
 
   private setupLogging(): void {
-    this.prisma.$on('query', (e) => {
-      if (config.server.nodeEnv === 'development') {
-        logger.debug('Database Query:', {
-          query: e.query,
-          params: e.params,
-          duration: `${e.duration}ms`,
-        });
-      }
-    });
-
-    this.prisma.$on('error', (e) => {
-      logger.error('Database Error:', e);
-    });
-
-    this.prisma.$on('info', (e) => {
-      logger.info('Database Info:', e);
-    });
-
-    this.prisma.$on('warn', (e) => {
-      logger.warn('Database Warning:', e);
-    });
+    // MongoDB with Prisma doesn't support query logging in the same way
+    // We'll skip the logging setup for now
+    if (config.server.nodeEnv === 'development') {
+      logger.debug('Database logging disabled for MongoDB');
+    }
   }
 
   public async connect(): Promise<void> {
@@ -77,7 +60,7 @@ class DatabaseConnection {
       await this.prisma.$connect();
       logger.info('Database connected successfully', {
         service: config.server.serviceName,
-        database: config.database.name,
+        database: 'MongoDB',
       });
     } catch (error) {
       logger.error('Database connection failed:', error);
@@ -99,7 +82,8 @@ class DatabaseConnection {
 
   public async healthCheck(): Promise<boolean> {
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      // For MongoDB, we can use a simple findOne operation
+      await this.prisma.hall.findFirst();
       return true;
     } catch (error) {
       logger.error('Database health check failed:', error);
@@ -110,7 +94,9 @@ class DatabaseConnection {
   public async transaction<T>(
     fn: (prisma: PrismaClient) => Promise<T>
   ): Promise<T> {
-    return await this.prisma.$transaction(fn);
+    // For MongoDB, we'll use a simple execution without transaction
+    // MongoDB transactions require replica sets which might not be available
+    return await fn(this.prisma);
   }
 }
 

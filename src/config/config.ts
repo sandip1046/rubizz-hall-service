@@ -14,17 +14,33 @@ const envSchema = Joi.object({
 
   // Database Configuration
   DATABASE_URL: Joi.string().required(),
-  DB_HOST: Joi.string().default('localhost'),
-  DB_PORT: Joi.number().default(5432),
-  DB_NAME: Joi.string().default('rubizz_hall_db'),
-  DB_USER: Joi.string().default('username'),
-  DB_PASSWORD: Joi.string().default('password'),
 
-  // Redis Configuration
-  REDIS_URL: Joi.string().default('redis://localhost:6379'),
-  REDIS_HOST: Joi.string().default('localhost'),
-  REDIS_PORT: Joi.number().default(6379),
-  REDIS_PASSWORD: Joi.string().optional(),
+  // Redis Configuration - Session Management (Upstash)
+  REDIS_SESSION_URL: Joi.string().required(),
+  REDIS_SESSION_HOST: Joi.string().required(),
+  REDIS_SESSION_PORT: Joi.number().default(6379),
+  REDIS_SESSION_PASSWORD: Joi.string().required(),
+  REDIS_SESSION_USERNAME: Joi.string().default('default'),
+  REDIS_SESSION_TLS: Joi.boolean().default(true),
+  REDIS_SESSION_DB: Joi.number().default(0),
+
+  // Redis Configuration - Caching (Upstash)
+  REDIS_CACHE_URL: Joi.string().required(),
+  REDIS_CACHE_HOST: Joi.string().required(),
+  REDIS_CACHE_PORT: Joi.number().default(6379),
+  REDIS_CACHE_PASSWORD: Joi.string().required(),
+  REDIS_CACHE_USERNAME: Joi.string().default('default'),
+  REDIS_CACHE_TLS: Joi.boolean().default(true),
+  REDIS_CACHE_DB: Joi.number().default(1),
+
+  // Redis Configuration - Message Queues (Upstash)
+  REDIS_QUEUE_URL: Joi.string().required(),
+  REDIS_QUEUE_HOST: Joi.string().required(),
+  REDIS_QUEUE_PORT: Joi.number().default(6379),
+  REDIS_QUEUE_PASSWORD: Joi.string().required(),
+  REDIS_QUEUE_USERNAME: Joi.string().default('default'),
+  REDIS_QUEUE_TLS: Joi.boolean().default(true),
+  REDIS_QUEUE_DB: Joi.number().default(2),
 
   // JWT Configuration
   JWT_SECRET: Joi.string().min(32).required(),
@@ -45,9 +61,15 @@ const envSchema = Joi.object({
   // Email Configuration
   SMTP_HOST: Joi.string().default('smtp.gmail.com'),
   SMTP_PORT: Joi.number().default(587),
-  SMTP_SECURE: Joi.boolean().default(false),
   SMTP_USER: Joi.string().email().default('your-email@gmail.com'),
   SMTP_PASS: Joi.string().default('your-app-password'),
+
+  // Brevo SMTP Configuration
+  BREVO_SMTP_HOST: Joi.string().default('smtp-relay.brevo.com'),
+  BREVO_SMTP_PORT: Joi.number().default(587),
+  BREVO_SMTP_USER: Joi.string().email().default('your-email@brevo.com'),
+  BREVO_SMTP_PASS: Joi.string().default('your-brevo-password'),
+
   FROM_EMAIL: Joi.string().email().default('noreply@rubizzhotel.com'),
   FROM_NAME: Joi.string().default('Rubizz Hotel Inn'),
 
@@ -111,19 +133,39 @@ export const config = {
   // Database
   database: {
     url: env.DATABASE_URL,
-    host: env.DB_HOST,
-    port: env.DB_PORT,
-    name: env.DB_NAME,
-    user: env.DB_USER,
-    password: env.DB_PASSWORD,
   },
 
-  // Redis
-  redis: {
-    url: env.REDIS_URL,
-    host: env.REDIS_HOST,
-    port: env.REDIS_PORT,
-    password: env.REDIS_PASSWORD,
+  // Redis - Session Management
+  redisSession: {
+    url: env.REDIS_SESSION_URL,
+    host: env.REDIS_SESSION_HOST,
+    port: env.REDIS_SESSION_PORT,
+    password: env.REDIS_SESSION_PASSWORD,
+    username: env.REDIS_SESSION_USERNAME,
+    tls: env.REDIS_SESSION_TLS,
+    db: env.REDIS_SESSION_DB,
+  },
+
+  // Redis - Caching
+  redisCache: {
+    url: env.REDIS_CACHE_URL,
+    host: env.REDIS_CACHE_HOST,
+    port: env.REDIS_CACHE_PORT,
+    password: env.REDIS_CACHE_PASSWORD,
+    username: env.REDIS_CACHE_USERNAME,
+    tls: env.REDIS_CACHE_TLS,
+    db: env.REDIS_CACHE_DB,
+  },
+
+  // Redis - Message Queues
+  redisQueue: {
+    url: env.REDIS_QUEUE_URL,
+    host: env.REDIS_QUEUE_HOST,
+    port: env.REDIS_QUEUE_PORT,
+    password: env.REDIS_QUEUE_PASSWORD,
+    username: env.REDIS_QUEUE_USERNAME,
+    tls: env.REDIS_QUEUE_TLS,
+    db: env.REDIS_QUEUE_DB,
   },
 
   // JWT
@@ -153,10 +195,17 @@ export const config = {
     smtp: {
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
-      secure: env.SMTP_SECURE,
       auth: {
         user: env.SMTP_USER,
         pass: env.SMTP_PASS,
+      },
+    },
+    brevo: {
+      host: env.BREVO_SMTP_HOST,
+      port: env.BREVO_SMTP_PORT,
+      auth: {
+        user: env.BREVO_SMTP_USER,
+        pass: env.BREVO_SMTP_PASS,
       },
     },
     from: {

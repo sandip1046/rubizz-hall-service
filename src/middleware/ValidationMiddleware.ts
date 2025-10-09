@@ -140,7 +140,7 @@ export class ValidationMiddleware {
   } = {}) {
     return (req: Request, res: Response, next: NextFunction): void => {
       const { maxSize = 5 * 1024 * 1024, allowedTypes = [], required = false } = options;
-      const file = req.file;
+      const file = (req as any).file;
 
       if (required && !file) {
         const response: ApiResponse = {
@@ -399,6 +399,56 @@ export const ValidationSchemas = {
       })
     ).min(1).required(),
     validUntil: Joi.date().iso().min('now').optional(),
+  }),
+
+  updateQuotation: Joi.object({
+    eventName: Joi.string().min(1).max(200).optional(),
+    eventType: Joi.string().valid(
+      'WEDDING',
+      'CORPORATE',
+      'BIRTHDAY',
+      'ANNIVERSARY',
+      'CONFERENCE',
+      'SEMINAR',
+      'PARTY',
+      'MEETING',
+      'OTHER'
+    ).optional(),
+    eventDate: Joi.date().iso().min('now').optional(),
+    startTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+    endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
+    guestCount: Joi.number().integer().min(1).max(10000).optional(),
+    lineItems: Joi.array().items(
+      Joi.object({
+        itemType: Joi.string().valid(
+          'HALL_RENTAL',
+          'CHAIR',
+          'TABLE',
+          'DECORATION',
+          'LIGHTING',
+          'AV_EQUIPMENT',
+          'CATERING',
+          'SECURITY',
+          'GENERATOR',
+          'CLEANING',
+          'PARKING',
+          'OTHER'
+        ).required(),
+        itemName: Joi.string().min(1).max(100).required(),
+        description: Joi.string().max(200).optional(),
+        quantity: Joi.number().integer().min(1).required(),
+        unitPrice: Joi.number().positive().required(),
+        specifications: Joi.object().optional(),
+      })
+    ).optional(),
+    validUntil: Joi.date().iso().min('now').optional(),
+    status: Joi.string().valid(
+      'DRAFT',
+      'SENT',
+      'ACCEPTED',
+      'REJECTED',
+      'EXPIRED'
+    ).optional(),
   }),
 
   // Line item schemas

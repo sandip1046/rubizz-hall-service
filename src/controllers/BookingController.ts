@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { BookingService } from '@/services/BookingService';
 import { logger } from '@/utils/logger';
-import { ApiResponse } from '@/types';
+import { ApiResponse, EventType, BookingStatus, PaymentStatus } from '@/types';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
 import { ValidationMiddleware, ValidationSchemas } from '@/middleware/ValidationMiddleware';
 import { AuthMiddleware } from '@/middleware/AuthMiddleware';
@@ -41,6 +41,16 @@ export class BookingController {
   public getBookingById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Booking ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const booking = await this.bookingService.getBookingById(id);
 
       if (!booking) {
@@ -74,15 +84,15 @@ export class BookingController {
   public getBookings = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const filters = {
-        hallId: req.query.hallId as string,
-        customerId: req.query.customerId as string,
-        eventType: req.query.eventType as string,
-        status: req.query.status as string,
-        paymentStatus: req.query.paymentStatus as string,
-        startDate: req.query.startDate as string,
-        endDate: req.query.endDate as string,
-        isConfirmed: req.query.isConfirmed ? req.query.isConfirmed === 'true' : undefined,
-        isCancelled: req.query.isCancelled ? req.query.isCancelled === 'true' : undefined,
+        ...(req.query.hallId && { hallId: req.query.hallId as string }),
+        ...(req.query.customerId && { customerId: req.query.customerId as string }),
+        ...(req.query.eventType && { eventType: req.query.eventType as EventType }),
+        ...(req.query.status && { status: req.query.status as BookingStatus }),
+        ...(req.query.paymentStatus && { paymentStatus: req.query.paymentStatus as PaymentStatus }),
+        ...(req.query.startDate && { startDate: req.query.startDate as string }),
+        ...(req.query.endDate && { endDate: req.query.endDate as string }),
+        ...(req.query.isConfirmed !== undefined && { isConfirmed: req.query.isConfirmed === 'true' }),
+        ...(req.query.isCancelled !== undefined && { isCancelled: req.query.isCancelled === 'true' }),
       };
 
       const pagination = {
@@ -117,6 +127,16 @@ export class BookingController {
   public updateBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Booking ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const booking = await this.bookingService.updateBooking(id, req.body);
 
       const response: ApiResponse = {
@@ -139,6 +159,16 @@ export class BookingController {
   public cancelBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Booking ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const { reason } = req.body;
 
       if (!reason) {
@@ -174,6 +204,16 @@ export class BookingController {
   public confirmBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Booking ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const booking = await this.bookingService.confirmBooking(id);
 
       const response: ApiResponse = {
@@ -196,6 +236,16 @@ export class BookingController {
   public checkInBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Booking ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const booking = await this.bookingService.checkInBooking(id);
 
       const response: ApiResponse = {
@@ -218,6 +268,16 @@ export class BookingController {
   public checkOutBooking = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Booking ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const booking = await this.bookingService.checkOutBooking(id);
 
       const response: ApiResponse = {
@@ -240,10 +300,10 @@ export class BookingController {
   public getBookingStatistics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const filters = {
-        hallId: req.query.hallId as string,
-        customerId: req.query.customerId as string,
-        startDate: req.query.startDate as string,
-        endDate: req.query.endDate as string,
+        ...(req.query.hallId && { hallId: req.query.hallId as string }),
+        ...(req.query.customerId && { customerId: req.query.customerId as string }),
+        ...(req.query.startDate && { startDate: req.query.startDate as string }),
+        ...(req.query.endDate && { endDate: req.query.endDate as string }),
       };
 
       const statistics = await this.bookingService.getBookingStatistics(filters);
@@ -317,6 +377,16 @@ export class BookingController {
   public getHallBookings = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { hallId } = req.params;
+      if (!hallId) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Hall ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
 
       const filters = {
         hallId,

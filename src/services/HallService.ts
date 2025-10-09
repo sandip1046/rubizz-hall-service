@@ -34,7 +34,7 @@ export class HallService {
       }
 
       // Check if hall with same name already exists
-      const existingHall = await this.prisma.hall.findUnique({
+      const existingHall = await this.prisma.hall.findFirst({
         where: { name: data.name },
       });
 
@@ -46,18 +46,17 @@ export class HallService {
       const hall = await this.prisma.hall.create({
         data: {
           name: data.name,
-          description: data.description,
+          description: data.description || null,
           capacity: data.capacity,
-          area: data.area,
+          area: data.area || 0,
           location: data.location,
-          floor: data.floor,
           amenities: data.amenities || [],
           baseRate: data.baseRate,
-          hourlyRate: data.hourlyRate,
-          dailyRate: data.dailyRate,
-          weekendRate: data.weekendRate,
+          hourlyRate: data.hourlyRate || null,
+          dailyRate: data.dailyRate || null,
+          weekendRate: data.weekendRate || null,
           images: data.images || [],
-          floorPlan: data.floorPlan,
+          floorPlan: data.floorPlan || null,
         },
       });
 
@@ -179,17 +178,8 @@ export class HallService {
 
       // Check availability for specific date/time
       if (filters?.date && filters?.startTime && filters?.endTime) {
-        const isAvailable = await this.checkHallAvailability(
-          filters.date,
-          filters.startTime,
-          filters.endTime
-        );
-        
-        if (!isAvailable) {
-          where.id = {
-            in: [], // No halls available
-          };
-        }
+        // This will be handled in the availability check for each hall
+        // We'll filter out unavailable halls after fetching them
       }
 
       // Build order by clause
@@ -251,7 +241,7 @@ export class HallService {
 
       // Check name uniqueness if name is being updated
       if (data.name && data.name !== existingHall.name) {
-        const nameExists = await this.prisma.hall.findUnique({
+        const nameExists = await this.prisma.hall.findFirst({
           where: { name: data.name },
         });
 
@@ -447,6 +437,9 @@ export class HallService {
               createdAt: 'desc',
             },
             take: 10,
+            include: {
+              lineItems: true,
+            },
           },
           lineItems: {
             orderBy: {

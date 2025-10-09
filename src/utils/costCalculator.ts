@@ -117,8 +117,8 @@ export class CostCalculator {
       LineItemType.CHAIR,
       LineItemType.CATERING,
       LineItemType.CLEANING,
-    ];
-    return guestDependentItems.includes(itemType);
+    ] as const;
+    return (guestDependentItems as readonly LineItemType[]).includes(itemType);
   }
 
   /**
@@ -158,6 +158,10 @@ export class CostCalculator {
   private static calculateDuration(startTime: string, endTime: string): number {
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
+    
+    if (startHour === undefined || startMin === undefined || endHour === undefined || endMin === undefined) {
+      throw new Error('Invalid time format');
+    }
     
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;
@@ -333,6 +337,7 @@ export class CostCalculator {
       {
         itemType: LineItemType.HALL_RENTAL,
         itemName: 'Hall Rental',
+        description: 'Basic hall rental for the event',
         quantity: 1,
         unitPrice: config.costCalculator.baseHallRate,
       },
@@ -343,6 +348,7 @@ export class CostCalculator {
       baseItems.push({
         itemType: LineItemType.CHAIR,
         itemName: 'Chairs',
+        description: 'Chairs for guests',
         quantity: guestCount,
         unitPrice: config.costCalculator.chairRate,
       });
@@ -355,18 +361,21 @@ export class CostCalculator {
           {
             itemType: LineItemType.DECORATION,
             itemName: 'Wedding Decoration Package',
+            description: 'Complete wedding decoration package',
             quantity: 1,
             unitPrice: config.costCalculator.decorationRate * 2,
           },
           {
             itemType: LineItemType.LIGHTING,
             itemName: 'Wedding Lighting',
+            description: 'Wedding lighting setup',
             quantity: 1,
             unitPrice: config.costCalculator.lightingRate * 1.5,
           },
           {
             itemType: LineItemType.CATERING,
             itemName: 'Wedding Catering',
+            description: 'Wedding catering service',
             quantity: guestCount,
             unitPrice: config.costCalculator.cateringRatePerPerson * 1.2,
           }
@@ -380,12 +389,14 @@ export class CostCalculator {
           {
             itemType: LineItemType.AV_EQUIPMENT,
             itemName: 'AV Equipment Package',
+            description: 'Audio-visual equipment for corporate events',
             quantity: 1,
             unitPrice: config.costCalculator.avRate,
           },
           {
             itemType: LineItemType.TABLE,
             itemName: 'Conference Tables',
+            description: 'Conference tables for corporate events',
             quantity: Math.ceil(guestCount / 6),
             unitPrice: 200,
           }
@@ -398,12 +409,14 @@ export class CostCalculator {
           {
             itemType: LineItemType.DECORATION,
             itemName: 'Party Decoration',
+            description: 'Party decoration setup',
             quantity: 1,
             unitPrice: config.costCalculator.decorationRate,
           },
           {
             itemType: LineItemType.CATERING,
             itemName: 'Party Catering',
+            description: 'Party catering service',
             quantity: guestCount,
             unitPrice: config.costCalculator.cateringRatePerPerson,
           }
@@ -417,6 +430,7 @@ export class CostCalculator {
         {
           itemType: LineItemType.SECURITY,
           itemName: 'Security',
+          description: 'Security services for large events',
           quantity: 1,
           unitPrice: config.costCalculator.securityRate,
         }
@@ -428,6 +442,7 @@ export class CostCalculator {
         {
           itemType: LineItemType.GENERATOR,
           itemName: 'Backup Generator',
+          description: 'Backup generator for large events',
           quantity: 1,
           unitPrice: config.costCalculator.generatorRate,
         }

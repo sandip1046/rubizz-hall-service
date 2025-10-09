@@ -80,6 +80,9 @@ export class BookingService {
         data: {
           hallId: data.hallId,
           customerId: data.customerId,
+          customerName: '', // Will be populated from customer service
+          customerEmail: '', // Will be populated from customer service
+          customerPhone: '', // Will be populated from customer service
           eventName: data.eventName,
           eventType: data.eventType,
           startDate: new Date(data.startDate),
@@ -91,9 +94,12 @@ export class BookingService {
           specialRequests: data.specialRequests,
           baseAmount,
           additionalCharges,
+          discount: 0,
           taxAmount,
           totalAmount,
           depositAmount: CostCalculator.calculateDepositAmount(totalAmount),
+          balanceAmount: totalAmount - CostCalculator.calculateDepositAmount(totalAmount),
+          depositPaid: false,
           status: BookingStatus.PENDING,
           paymentStatus: PaymentStatus.PENDING,
         },
@@ -138,7 +144,6 @@ export class BookingService {
         where: { id },
         include: {
           hall: true,
-          quotation: true,
           lineItems: true,
           payments: true,
         },
@@ -149,7 +154,7 @@ export class BookingService {
         await redis.set(cacheKey, JSON.stringify(booking), 1800);
       }
 
-      return booking;
+      return booking as HallBooking | null;
     } catch (error) {
       logger.error('Failed to get booking by ID:', error);
       throw error;
@@ -227,13 +232,9 @@ export class BookingService {
           take: limit,
           orderBy,
           include: {
-            hall: {
-              select: {
-                id: true,
-                name: true,
-                location: true,
-              },
-            },
+            hall: true,
+            lineItems: true,
+            payments: true,
           },
         }),
         this.prisma.hallBooking.count({ where }),
@@ -243,7 +244,7 @@ export class BookingService {
       const paginationMeta = Helpers.generatePaginationMetadata(page, limit, total);
 
       return {
-        data: bookings,
+        data: bookings as HallBooking[],
         pagination: paginationMeta,
       };
     } catch (error) {
@@ -294,7 +295,7 @@ export class BookingService {
 
         const isAvailable = await this.hallService.checkHallAvailability(
           existingBooking.hallId,
-          startDate,
+          startDate!,
           startTime,
           endTime
         );
@@ -310,7 +311,6 @@ export class BookingService {
         data: Helpers.removeUndefinedValues(data),
         include: {
           hall: true,
-          quotation: true,
           lineItems: true,
           payments: true,
         },
@@ -322,7 +322,7 @@ export class BookingService {
 
       logger.info('Booking updated successfully', { bookingId: id });
 
-      return updatedBooking;
+      return updatedBooking as HallBooking;
     } catch (error) {
       logger.error('Failed to update booking:', error);
       throw error;
@@ -361,6 +361,7 @@ export class BookingService {
       const refundAmount = CostCalculator.calculateRefundAmount(
         existingBooking.totalAmount,
         existingBooking.totalAmount, // Assuming full amount is paid
+        24, // cancellationHours - assuming 24 hours notice
         existingBooking.startDate
       );
 
@@ -375,7 +376,6 @@ export class BookingService {
         },
         include: {
           hall: true,
-          quotation: true,
           lineItems: true,
           payments: true,
         },
@@ -391,7 +391,7 @@ export class BookingService {
         reason 
       });
 
-      return updatedBooking;
+      return updatedBooking as HallBooking;
     } catch (error) {
       logger.error('Failed to cancel booking:', error);
       throw error;
@@ -436,7 +436,6 @@ export class BookingService {
         },
         include: {
           hall: true,
-          quotation: true,
           lineItems: true,
           payments: true,
         },
@@ -448,7 +447,7 @@ export class BookingService {
 
       logger.info('Booking confirmed successfully', { bookingId: id });
 
-      return updatedBooking;
+      return updatedBooking as HallBooking;
     } catch (error) {
       logger.error('Failed to confirm booking:', error);
       throw error;
@@ -495,7 +494,6 @@ export class BookingService {
         },
         include: {
           hall: true,
-          quotation: true,
           lineItems: true,
           payments: true,
         },
@@ -507,7 +505,7 @@ export class BookingService {
 
       logger.info('Booking checked in successfully', { bookingId: id });
 
-      return updatedBooking;
+      return updatedBooking as HallBooking;
     } catch (error) {
       logger.error('Failed to check in booking:', error);
       throw error;
@@ -550,7 +548,6 @@ export class BookingService {
         },
         include: {
           hall: true,
-          quotation: true,
           lineItems: true,
           payments: true,
         },
@@ -562,7 +559,7 @@ export class BookingService {
 
       logger.info('Booking checked out successfully', { bookingId: id });
 
-      return updatedBooking;
+      return updatedBooking as HallBooking;
     } catch (error) {
       logger.error('Failed to check out booking:', error);
       throw error;

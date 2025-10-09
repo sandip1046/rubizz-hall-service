@@ -44,8 +44,9 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
 ### Technology Stack
 - **Runtime**: Node.js 18+ with TypeScript
 - **Framework**: Express.js
-- **Database**: PostgreSQL with Prisma ORM
-- **Cache**: Redis for session management and caching
+- **Database**: MongoDB with Prisma ORM
+- **Cache**: Multiple Redis instances (Session, Cache, Queue) with ioredis
+- **Email**: Nodemailer with SMTP and Brevo support
 - **Authentication**: JWT with role-based access control
 - **Validation**: Joi for request validation
 - **Logging**: Winston for structured logging
@@ -54,21 +55,31 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
 ### Service Architecture
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   API Gateway   │────│  Hall Service   │────│   PostgreSQL    │
+│   API Gateway   │────│  Hall Service   │────│    MongoDB      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                               │
                               │
-                       ┌─────────────────┐
-                       │     Redis       │
-                       └─────────────────┘
+                    ┌─────────────────────────┐
+                    │    Redis Cluster        │
+                    │  ┌─────┐ ┌─────┐ ┌─────┐│
+                    │  │Session│ │Cache│ │Queue││
+                    │  └─────┘ └─────┘ └─────┘│
+                    └─────────────────────────┘
+                              │
+                    ┌─────────────────────────┐
+                    │    Email Services       │
+                    │  ┌─────┐ ┌─────┐        │
+                    │  │ SMTP│ │Brevo│        │
+                    │  └─────┘ └─────┘        │
+                    └─────────────────────────┘
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js 18+ 
-- PostgreSQL 13+
-- Redis 6+
+- MongoDB 5.0+
+- Redis 6+ (Multiple instances recommended)
 - npm 8+
 
 ### Installation
@@ -95,14 +106,21 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
    # Generate Prisma client
    npm run prisma:generate
    
-   # Run database migrations
-   npm run prisma:migrate
+   # Push schema to database
+   npm run prisma:push
    
-   # (Optional) Seed database
-   npm run prisma:seed
+   # (Optional) Open Prisma Studio
+   npm run prisma:studio
    ```
 
-5. **Start the service**
+5. **Test Configuration**
+   ```bash
+   # Test the configuration
+   npm run build
+   node test-config.js
+   ```
+
+6. **Start the service**
    ```bash
    # Development
    npm run dev
@@ -158,17 +176,60 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
 
 ### Environment Variables
 
+#### Server Configuration
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `PORT` | Service port | 3007 | No |
 | `NODE_ENV` | Environment | development | No |
-| `DATABASE_URL` | PostgreSQL connection string | - | Yes |
-| `REDIS_URL` | Redis connection string | redis://localhost:6379 | No |
+| `SERVICE_NAME` | Service name | rubizz-hall-service | No |
+| `SERVICE_VERSION` | Service version | 1.0.0 | No |
+
+#### Database Configuration
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `DATABASE_URL` | MongoDB connection string | - | Yes |
+
+#### Redis Configuration (Multiple Instances)
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `REDIS_SESSION_URL` | Session Redis URL | - | Yes |
+| `REDIS_SESSION_HOST` | Session Redis host | - | Yes |
+| `REDIS_SESSION_PORT` | Session Redis port | 6379 | No |
+| `REDIS_SESSION_PASSWORD` | Session Redis password | - | Yes |
+| `REDIS_SESSION_TLS` | Session Redis TLS | true | No |
+| `REDIS_CACHE_URL` | Cache Redis URL | - | Yes |
+| `REDIS_CACHE_HOST` | Cache Redis host | - | Yes |
+| `REDIS_CACHE_PORT` | Cache Redis port | 6379 | No |
+| `REDIS_CACHE_PASSWORD` | Cache Redis password | - | Yes |
+| `REDIS_CACHE_TLS` | Cache Redis TLS | true | No |
+| `REDIS_QUEUE_URL` | Queue Redis URL | - | Yes |
+| `REDIS_QUEUE_HOST` | Queue Redis host | - | Yes |
+| `REDIS_QUEUE_PORT` | Queue Redis port | 6379 | No |
+| `REDIS_QUEUE_PASSWORD` | Queue Redis password | - | Yes |
+| `REDIS_QUEUE_TLS` | Queue Redis TLS | true | No |
+
+#### Email Configuration
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `SMTP_HOST` | SMTP host | smtp.gmail.com | No |
+| `SMTP_PORT` | SMTP port | 587 | No |
+| `SMTP_USER` | SMTP username | - | No |
+| `SMTP_PASS` | SMTP password | - | No |
+| `BREVO_SMTP_HOST` | Brevo SMTP host | smtp-relay.brevo.com | No |
+| `BREVO_SMTP_PORT` | Brevo SMTP port | 587 | No |
+| `BREVO_SMTP_USER` | Brevo SMTP username | - | No |
+| `BREVO_SMTP_PASS` | Brevo SMTP password | - | No |
+| `FROM_EMAIL` | From email address | noreply@rubizzhotel.com | No |
+| `FROM_NAME` | From name | Rubizz Hotel Inn | No |
+
+#### Security Configuration
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
 | `JWT_SECRET` | JWT signing secret | - | Yes |
+| `JWT_EXPIRES_IN` | JWT expiration | 24h | No |
+| `JWT_REFRESH_SECRET` | JWT refresh secret | - | Yes |
+| `JWT_REFRESH_EXPIRES_IN` | JWT refresh expiration | 7d | No |
 | `API_GATEWAY_SECRET` | API Gateway secret | - | Yes |
-| `SMTP_HOST` | Email SMTP host | smtp.gmail.com | No |
-| `SMTP_USER` | Email username | - | No |
-| `SMTP_PASS` | Email password | - | No |
 
 ### Business Configuration
 
@@ -181,62 +242,160 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
 | `TAX_PERCENTAGE` | Tax percentage | 18 |
 | `DEPOSIT_PERCENTAGE` | Deposit percentage | 20 |
 
-## 🗄️ Database Schema
+## 🗄️ Database Schema (MongoDB with Prisma)
 
-### Core Entities
+### Core Models
 
-#### Hall
-- `id` - Unique identifier
-- `name` - Hall name
-- `description` - Hall description
-- `capacity` - Maximum guest capacity
-- `area` - Hall area in square feet
-- `location` - Hall location
-- `amenities` - Available amenities
-- `baseRate` - Base rental rate
-- `hourlyRate` - Hourly rate (optional)
-- `dailyRate` - Daily rate (optional)
-- `weekendRate` - Weekend surcharge (optional)
-- `isActive` - Hall status
-- `isAvailable` - Availability status
+#### Hall Model
+```prisma
+model Hall {
+  id          String   @id @default(cuid()) @map("_id")
+  name        String
+  description String?
+  capacity    Int
+  area        Float
+  location    String
+  amenities   String[]
+  
+  // Pricing
+  baseRate    Float
+  hourlyRate  Float?
+  dailyRate   Float?
+  weekendRate Float?
+  
+  // Status
+  isActive    Boolean  @default(true)
+  isAvailable Boolean  @default(true)
+  
+  // Images
+  images      String[]
+  floorPlan   String?
+  
+  // Relations
+  bookings    HallBooking[]
+  quotations  HallQuotation[]
+  lineItems   HallLineItem[]
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("halls")
+}
+```
 
-#### HallBooking
-- `id` - Unique identifier
-- `hallId` - Reference to hall
-- `customerId` - Reference to customer
-- `eventName` - Event name
-- `eventType` - Type of event
-- `startDate` - Event start date
-- `endDate` - Event end date
-- `startTime` - Event start time
-- `endTime` - Event end time
-- `guestCount` - Number of guests
-- `totalAmount` - Total booking amount
-- `status` - Booking status
-- `paymentStatus` - Payment status
+#### HallBooking Model
+```prisma
+model HallBooking {
+  id              String   @id @default(cuid()) @map("_id")
+  hallId          String
+  hall            Hall     @relation(fields: [hallId], references: [id])
+  
+  // Customer Info
+  customerId      String
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  
+  // Event Details
+  eventName       String
+  eventType       EventType
+  startDate       DateTime
+  endDate         DateTime
+  startTime       String
+  endTime         String
+  guestCount      Int
+  
+  // Pricing
+  totalAmount     Float
+  depositAmount   Float?
+  balanceAmount   Float?
+  
+  // Status
+  status          BookingStatus @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  
+  // Special Requests
+  specialRequests String?
+  
+  // Relations
+  lineItems       HallLineItem[]
+  payments        HallPayment[]
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("hall_bookings")
+}
+```
 
-#### HallQuotation
-- `id` - Unique identifier
-- `hallId` - Reference to hall
-- `customerId` - Reference to customer
-- `quotationNumber` - Unique quotation number
-- `eventName` - Event name
-- `eventType` - Type of event
-- `eventDate` - Event date
-- `totalAmount` - Total quotation amount
-- `validUntil` - Quotation validity
-- `status` - Quotation status
+#### HallQuotation Model
+```prisma
+model HallQuotation {
+  id              String   @id @default(cuid()) @map("_id")
+  hallId          String
+  hall            Hall     @relation(fields: [hallId], references: [id])
+  
+  // Customer Info
+  customerId      String
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  
+  // Event Details
+  eventName       String
+  eventType       EventType
+  eventDate       DateTime
+  guestCount      Int
+  
+  // Quotation Details
+  quotationNumber String   @unique
+  totalAmount     Float
+  validUntil      DateTime
+  
+  // Status
+  status          QuotationStatus @default(DRAFT)
+  
+  // Relations
+  lineItems       HallLineItem[]
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("hall_quotations")
+}
+```
 
-#### HallLineItem
-- `id` - Unique identifier
-- `hallId` - Reference to hall
-- `quotationId` - Reference to quotation (optional)
-- `bookingId` - Reference to booking (optional)
-- `itemType` - Type of line item
-- `itemName` - Item name
-- `quantity` - Item quantity
-- `unitPrice` - Unit price
-- `totalPrice` - Total price
+#### HallLineItem Model
+```prisma
+model HallLineItem {
+  id              String   @id @default(cuid()) @map("_id")
+  hallId          String
+  hall            Hall     @relation(fields: [hallId], references: [id])
+  
+  // Optional Relations
+  bookingId       String?
+  booking         HallBooking? @relation(fields: [bookingId], references: [id])
+  quotationId     String?
+  quotation       HallQuotation? @relation(fields: [quotationId], references: [id])
+  
+  // Item Details
+  itemType        LineItemType
+  itemName        String
+  description     String?
+  quantity        Int
+  unitPrice       Float
+  totalPrice      Float
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("hall_line_items")
+}
+```
 
 ## 🔐 Authentication & Authorization
 
@@ -265,10 +424,16 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
 
 ### Health Checks
 - **Basic Health**: `/health` - Service status
-- **Detailed Health**: `/health/detailed` - Dependencies status
+- **Detailed Health**: `/health/detailed` - Dependencies status (MongoDB, Redis instances)
 - **Readiness**: `/health/ready` - Kubernetes readiness
 - **Liveness**: `/health/live` - Kubernetes liveness
 - **Metrics**: `/metrics` - Service metrics
+
+### Redis Health Monitoring
+- **Session Redis**: Monitors session management Redis instance
+- **Cache Redis**: Monitors caching Redis instance  
+- **Queue Redis**: Monitors message queue Redis instance
+- **Connection Status**: Tracks connection state for all Redis instances
 
 ### Logging
 - **Structured Logging**: JSON format with Winston
@@ -372,12 +537,14 @@ tests/
 ## 📈 Performance
 
 ### Optimization Features
-- **Database Indexing**: Optimized queries with proper indexes
-- **Redis Caching**: Frequently accessed data caching
-- **Connection Pooling**: Database connection optimization
+- **Database Indexing**: Optimized MongoDB queries with proper indexes
+- **Multi-Redis Caching**: Session, cache, and queue Redis instances for optimal performance
+- **Connection Pooling**: MongoDB connection optimization with Mongoose
+- **ioredis Performance**: Enhanced Redis client with better performance
 - **Compression**: Response compression
-- **Rate Limiting**: API rate limiting
+- **Rate Limiting**: API rate limiting with Redis store
 - **Pagination**: Large dataset pagination
+- **Email Optimization**: Dual email provider support for reliability
 
 ### Performance Metrics
 - **Response Time**: < 200ms for 95% of requests
@@ -393,12 +560,16 @@ src/
 ├── config/         # Configuration management
 ├── controllers/    # Request handlers
 ├── middleware/     # Express middleware
-├── models/         # Data models
-├── services/       # Business logic
+├── models/         # Prisma models (auto-generated)
+├── services/       # Business logic (including EmailService)
 ├── types/          # TypeScript types
 ├── utils/          # Utility functions
-├── database/       # Database connections
+├── database/       # Database connections (Prisma, Redis)
 └── index.ts        # Application entry point
+
+prisma/
+├── schema.prisma   # Database schema
+└── seed.ts         # Database seeding
 ```
 
 ### Coding Standards
@@ -430,6 +601,44 @@ src/
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Configuration Errors
+```bash
+# Test your configuration
+npm run build
+node test-config.js
+```
+
+#### Redis Connection Issues
+- Ensure all three Redis instances are accessible
+- Check TLS configuration for Upstash Redis
+- Verify credentials and connection strings
+
+#### MongoDB Connection Issues
+- Ensure MongoDB is running and accessible
+- Check connection string format
+- Verify network connectivity
+
+#### Email Service Issues
+- Test both SMTP and Brevo connections
+- Verify email credentials
+- Check firewall settings for SMTP ports
+
+### Debug Commands
+```bash
+# Check service health
+curl http://localhost:3007/health/detailed
+
+# Test configuration
+node test-config.js
+
+# View logs
+tail -f logs/hall-service.log
+```
+
 ## 🆘 Support
 
 For support and questions:
@@ -439,6 +648,17 @@ For support and questions:
 - **Slack**: #hall-service-support
 
 ## 🔄 Changelog
+
+### v1.1.0 (2024-01-08)
+- **BREAKING CHANGES**: Updated Redis configuration to support multiple instances
+- **NEW**: Added EmailService with dual provider support (SMTP + Brevo)
+- **NEW**: Enhanced Redis connection with ioredis for better performance
+- **NEW**: Prisma ORM with MongoDB for better type safety
+- **NEW**: Comprehensive Prisma schema for hall management
+- **NEW**: Configuration test script for validation
+- **IMPROVED**: Better error handling and logging
+- **IMPROVED**: Enhanced health checks for all dependencies
+- **IMPROVED**: Updated package.json with Prisma dependencies
 
 ### v1.0.0 (2024-01-01)
 - Initial release

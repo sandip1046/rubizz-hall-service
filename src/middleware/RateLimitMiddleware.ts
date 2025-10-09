@@ -24,11 +24,11 @@ class RedisStore {
     const windowKey = `${redisKey}:${window}`;
 
     // Increment counter
-    const totalHits = await redis.client.incr(windowKey);
+    const totalHits = await redis.getCacheClient().incr(windowKey);
     
     // Set expiration for the window
     if (totalHits === 1) {
-      await redis.client.expire(windowKey, Math.ceil(windowMs / 1000));
+      await redis.getCacheClient().expire(windowKey, Math.ceil(windowMs / 1000));
     }
 
     // Calculate reset time
@@ -43,7 +43,7 @@ class RedisStore {
     const window = Math.floor(now / config.rateLimit.windowMs);
     const windowKey = `${redisKey}:${window}`;
 
-    await redis.client.decr(windowKey);
+    await redis.getCacheClient().decr(windowKey);
   }
 
   async resetKey(key: string): Promise<void> {
@@ -51,10 +51,10 @@ class RedisStore {
     const pattern = `${redisKey}:*`;
     
     // Get all keys matching the pattern
-    const keys = await redis.client.keys(pattern);
+    const keys = await redis.getCacheClient().keys(pattern);
     
     if (keys.length > 0) {
-      await redis.client.del(keys);
+      await redis.getCacheClient().del(keys);
     }
   }
 }
@@ -109,15 +109,6 @@ export class RateLimitMiddleware {
       // Skip rate limiting for health checks
       return req.path === '/health' || req.path === '/health/ready';
     },
-    onLimitReached: (req: Request) => {
-      logger.warn('Rate limit reached', {
-        ip: req.ip,
-        userId: req.user?.id,
-        url: req.url,
-        method: req.method,
-        userAgent: req.get('User-Agent'),
-      });
-    },
   });
 
   /**
@@ -162,15 +153,6 @@ export class RateLimitMiddleware {
       const ip = req.ip || req.connection.remoteAddress || 'unknown';
       const operation = req.path.split('/').pop(); // Get the last part of the path
       return userId ? `strict:user:${userId}:${operation}` : `strict:ip:${ip}:${operation}`;
-    },
-    onLimitReached: (req: Request) => {
-      logger.warn('Strict rate limit reached', {
-        ip: req.ip,
-        userId: req.user?.id,
-        url: req.url,
-        method: req.method,
-        userAgent: req.get('User-Agent'),
-      });
     },
   });
 
@@ -219,14 +201,6 @@ export class RateLimitMiddleware {
       // Skip if user is already authenticated
       return !!req.user;
     },
-    onLimitReached: (req: Request) => {
-      logger.warn('Auth rate limit reached', {
-        ip: req.ip,
-        url: req.url,
-        method: req.method,
-        userAgent: req.get('User-Agent'),
-      });
-    },
   });
 
   /**
@@ -269,15 +243,6 @@ export class RateLimitMiddleware {
     keyGenerator: (req: Request) => {
       const apiKey = req.headers['x-api-key'] as string;
       return `api:${apiKey || 'anonymous'}`;
-    },
-    onLimitReached: (req: Request) => {
-      logger.warn('API key rate limit reached', {
-        apiKey: req.headers['x-api-key'],
-        ip: req.ip,
-        url: req.url,
-        method: req.method,
-        userAgent: req.get('User-Agent'),
-      });
     },
   });
 
@@ -322,15 +287,6 @@ export class RateLimitMiddleware {
       const userId = req.user?.id;
       const ip = req.ip || req.connection.remoteAddress || 'unknown';
       return userId ? `upload:user:${userId}` : `upload:ip:${ip}`;
-    },
-    onLimitReached: (req: Request) => {
-      logger.warn('File upload rate limit reached', {
-        ip: req.ip,
-        userId: req.user?.id,
-        url: req.url,
-        method: req.method,
-        userAgent: req.get('User-Agent'),
-      });
     },
   });
 
@@ -383,16 +339,7 @@ export class RateLimitMiddleware {
         const ip = req.ip || req.connection.remoteAddress || 'unknown';
         return userId ? `custom:user:${userId}` : `custom:ip:${ip}`;
       }),
-      skip: options.skip,
-      onLimitReached: (req: Request) => {
-        logger.warn('Custom rate limit reached', {
-          ip: req.ip,
-          userId: req.user?.id,
-          url: req.url,
-          method: req.method,
-          userAgent: req.get('User-Agent'),
-        });
-      },
+      ...(options.skip && { skip: options.skip }),
     });
   }
 

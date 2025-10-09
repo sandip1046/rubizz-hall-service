@@ -121,15 +121,15 @@ export class Validators {
       errors.push('Base rate must be greater than 0');
     }
 
-    if (data.hourlyRate !== undefined && data.hourlyRate <= 0) {
+    if (data.hourlyRate !== undefined && data.hourlyRate !== null && data.hourlyRate <= 0) {
       errors.push('Hourly rate must be greater than 0');
     }
 
-    if (data.dailyRate !== undefined && data.dailyRate <= 0) {
+    if (data.dailyRate !== undefined && data.dailyRate !== null && data.dailyRate <= 0) {
       errors.push('Daily rate must be greater than 0');
     }
 
-    if (data.weekendRate !== undefined && data.weekendRate <= 0) {
+    if (data.weekendRate !== undefined && data.weekendRate !== null && data.weekendRate <= 0) {
       errors.push('Weekend rate must be greater than 0');
     }
 
@@ -262,7 +262,7 @@ export class Validators {
       }
     }
 
-    if (data.specialRequests !== undefined && data.specialRequests.length > 1000) {
+    if (data.specialRequests !== undefined && data.specialRequests !== null && data.specialRequests.length > 1000) {
       errors.push('Special requests must be less than 1000 characters');
     }
 
@@ -487,6 +487,10 @@ export class Validators {
   private static isValidTimeRange(startTime: string, endTime: string): boolean {
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
+    
+    if (startHour === undefined || startMin === undefined || endHour === undefined || endMin === undefined) {
+      return false;
+    }
     
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;

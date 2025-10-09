@@ -67,14 +67,14 @@ export class HealthController {
           duration: `${duration}ms`,
           checks: {
             database: healthChecks[0].status === 'fulfilled' 
-              ? { status: 'healthy', ...healthChecks[0].value }
-              : { status: 'unhealthy', error: healthChecks[0].reason?.message },
+              ? { status: 'healthy', ...(healthChecks[0].value as any) }
+              : { status: 'unhealthy', error: (healthChecks[0] as any).reason?.message },
             redis: healthChecks[1].status === 'fulfilled'
-              ? { status: 'healthy', ...healthChecks[1].value }
-              : { status: 'unhealthy', error: healthChecks[1].reason?.message },
+              ? { status: 'healthy', ...(healthChecks[1].value as any) }
+              : { status: 'unhealthy', error: (healthChecks[1] as any).reason?.message },
             externalServices: healthChecks[2].status === 'fulfilled'
-              ? { status: 'healthy', ...healthChecks[2].value }
-              : { status: 'unhealthy', error: healthChecks[2].reason?.message },
+              ? { status: 'healthy', ...(healthChecks[2].value as any) }
+              : { status: 'unhealthy', error: (healthChecks[2] as any).reason?.message },
           },
         },
         timestamp: new Date().toISOString(),
@@ -240,9 +240,8 @@ export class HealthController {
       const responseTime = Date.now() - startTime;
 
       if (isHealthy) {
-        // Get database version
-        const result = await database.getPrisma().$queryRaw`SELECT version() as version`;
-        const version = (result as any)[0]?.version;
+        // Get database version - MongoDB doesn't have version() function
+        const version = 'MongoDB';
 
         return {
           status: 'healthy',
@@ -254,7 +253,8 @@ export class HealthController {
       }
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      throw new Error(`Database check failed: ${error.message} (${responseTime}ms)`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Database check failed: ${errorMessage} (${responseTime}ms)`);
     }
   }
 
@@ -280,14 +280,15 @@ export class HealthController {
         return {
           status: 'healthy',
           responseTime,
-          version: redisVersion,
+          version: redisVersion || 'Unknown',
         };
       } else {
         throw new Error('Redis health check failed');
       }
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      throw new Error(`Redis check failed: ${error.message} (${responseTime}ms)`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Redis check failed: ${errorMessage} (${responseTime}ms)`);
     }
   }
 
@@ -335,7 +336,7 @@ export class HealthController {
             name,
             status: 'unhealthy',
             responseTime,
-            error: error.message,
+            error: error instanceof Error ? error.message : 'Unknown error',
           };
         }
       })
@@ -345,14 +346,16 @@ export class HealthController {
     
     serviceChecks.forEach((check, index) => {
       const serviceName = Object.keys(services)[index];
-      if (check.status === 'fulfilled') {
-        results[serviceName] = check.value;
-      } else {
-        results[serviceName] = {
-          status: 'unhealthy',
-          responseTime: 0,
-          error: check.reason?.message || 'Unknown error',
-        };
+      if (serviceName) {
+        if (check.status === 'fulfilled') {
+          results[serviceName] = check.value;
+        } else {
+          results[serviceName] = {
+            status: 'unhealthy',
+            responseTime: 0,
+            error: (check as any).reason?.message || 'Unknown error',
+          };
+        }
       }
     });
 

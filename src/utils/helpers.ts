@@ -72,6 +72,10 @@ export class Helpers {
     const [startHour, startMin] = startTime.split(':').map(Number);
     const [endHour, endMin] = endTime.split(':').map(Number);
     
+    if (startHour === undefined || startMin === undefined || endHour === undefined || endMin === undefined) {
+      throw new Error('Invalid time format');
+    }
+    
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;
     
@@ -140,6 +144,9 @@ export class Helpers {
    */
   public static timeToMinutes(time: string): number {
     const [hours, minutes] = time.split(':').map(Number);
+    if (hours === undefined || minutes === undefined) {
+      throw new Error('Invalid time format');
+    }
     return hours * 60 + minutes;
   }
 
@@ -157,6 +164,9 @@ export class Helpers {
    */
   public static isWithinBusinessHours(time: string, startHour: number = 6, endHour: number = 22): boolean {
     const [hours] = time.split(':').map(Number);
+    if (hours === undefined) {
+      throw new Error('Invalid time format');
+    }
     return hours >= startHour && hours < endHour;
   }
 

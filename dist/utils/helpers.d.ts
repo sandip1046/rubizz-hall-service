@@ -1,0 +1,51 @@
+import { EventType, BookingStatus, PaymentStatus, QuotationStatus } from '@/types';
+export declare class Helpers {
+    static generateId(): string;
+    static generateBookingReference(): string;
+    static generatePaymentReference(): string;
+    static formatCurrency(amount: number, currency?: string): string;
+    static formatDate(date: Date | string, format?: 'short' | 'long' | 'time'): string;
+    static getTimeDifferenceInHours(startTime: string, endTime: string): number;
+    static isWeekend(date: Date | string): boolean;
+    static isToday(date: Date | string): boolean;
+    static isPastDate(date: Date | string): boolean;
+    static addDays(date: Date | string, days: number): Date;
+    static getStartOfDay(date: Date | string): Date;
+    static getEndOfDay(date: Date | string): Date;
+    static timeToMinutes(time: string): number;
+    static minutesToTime(minutes: number): string;
+    static isWithinBusinessHours(time: string, startHour?: number, endHour?: number): boolean;
+    static getEventTypeDisplayName(eventType: EventType): string;
+    static getBookingStatusDisplayName(status: BookingStatus): string;
+    static getPaymentStatusDisplayName(status: PaymentStatus): string;
+    static getQuotationStatusDisplayName(status: QuotationStatus): string;
+    static deepClone<T>(obj: T): T;
+    static removeUndefinedValues<T extends Record<string, any>>(obj: T): Partial<T>;
+    static objectToQueryString(obj: Record<string, any>): string;
+    static queryStringToObject(queryString: string): Record<string, string>;
+    static generateRandomString(length?: number): string;
+    static generateRandomNumber(min?: number, max?: number): number;
+    static sleep(ms: number): Promise<void>;
+    static retry<T>(fn: () => Promise<T>, maxRetries?: number, baseDelay?: number): Promise<T>;
+    static debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void;
+    static throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void;
+    static isValidJSON(str: string): boolean;
+    static safeJSONParse<T>(str: string, defaultValue: T): T;
+    static capitalize(str: string): string;
+    static toTitleCase(str: string): string;
+    static truncate(str: string, length: number, suffix?: string): string;
+    static generateSlug(str: string): string;
+    static isValidEmail(email: string): boolean;
+    static isValidPhone(phone: string): boolean;
+    static maskSensitiveData(data: string, visibleChars?: number): string;
+    static generatePaginationMetadata(page: number, limit: number, total: number): {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasNext: boolean;
+        hasPrev: boolean;
+    };
+}
+export default Helpers;
+//# sourceMappingURL=helpers.d.ts.map

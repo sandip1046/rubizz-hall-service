@@ -1,76 +1,27 @@
 // Hall Management Service Types and Interfaces
 // This file contains all TypeScript type definitions for the hall management service
 
-// Enums
-export enum EventType {
-  WEDDING = 'WEDDING',
-  CORPORATE = 'CORPORATE',
-  BIRTHDAY = 'BIRTHDAY',
-  ANNIVERSARY = 'ANNIVERSARY',
-  CONFERENCE = 'CONFERENCE',
-  SEMINAR = 'SEMINAR',
-  PARTY = 'PARTY',
-  MEETING = 'MEETING',
-  OTHER = 'OTHER',
-}
+// Import Prisma enums
+import { 
+  EventType, 
+  BookingStatus, 
+  PaymentStatus, 
+  PaymentMode, 
+  PaymentType, 
+  QuotationStatus, 
+  LineItemType 
+} from '@prisma/client';
 
-export enum BookingStatus {
-  PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
-  CHECKED_IN = 'CHECKED_IN',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-  NO_SHOW = 'NO_SHOW',
-}
-
-export enum PaymentStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
-  FAILED = 'FAILED',
-  REFUNDED = 'REFUNDED',
-  PARTIALLY_REFUNDED = 'PARTIALLY_REFUNDED',
-}
-
-export enum PaymentMode {
-  CASH = 'CASH',
-  CARD = 'CARD',
-  UPI = 'UPI',
-  NET_BANKING = 'NET_BANKING',
-  WALLET = 'WALLET',
-  CHEQUE = 'CHEQUE',
-  BANK_TRANSFER = 'BANK_TRANSFER',
-}
-
-export enum PaymentType {
-  DEPOSIT = 'DEPOSIT',
-  ADVANCE = 'ADVANCE',
-  FULL_PAYMENT = 'FULL_PAYMENT',
-  REFUND = 'REFUND',
-}
-
-export enum QuotationStatus {
-  DRAFT = 'DRAFT',
-  SENT = 'SENT',
-  ACCEPTED = 'ACCEPTED',
-  REJECTED = 'REJECTED',
-  EXPIRED = 'EXPIRED',
-}
-
-export enum LineItemType {
-  HALL_RENTAL = 'HALL_RENTAL',
-  CHAIR = 'CHAIR',
-  TABLE = 'TABLE',
-  DECORATION = 'DECORATION',
-  LIGHTING = 'LIGHTING',
-  AV_EQUIPMENT = 'AV_EQUIPMENT',
-  CATERING = 'CATERING',
-  SECURITY = 'SECURITY',
-  GENERATOR = 'GENERATOR',
-  CLEANING = 'CLEANING',
-  PARKING = 'PARKING',
-  OTHER = 'OTHER',
-}
+// Re-export Prisma enums
+export { 
+  EventType, 
+  BookingStatus, 
+  PaymentStatus, 
+  PaymentMode, 
+  PaymentType, 
+  QuotationStatus, 
+  LineItemType 
+};
 
 // Base interfaces
 export interface BaseEntity {
@@ -82,54 +33,53 @@ export interface BaseEntity {
 // Hall interfaces
 export interface Hall extends BaseEntity {
   name: string;
-  description?: string;
+  description: string | null;
   capacity: number;
-  area?: number;
+  area: number;
   location: string;
-  floor?: string;
   amenities: string[];
   baseRate: number;
-  hourlyRate?: number;
-  dailyRate?: number;
-  weekendRate?: number;
+  hourlyRate: number | null;
+  dailyRate: number | null;
+  weekendRate: number | null;
   isActive: boolean;
   isAvailable: boolean;
   images: string[];
-  floorPlan?: string;
+  floorPlan: string | null;
 }
 
 export interface CreateHallRequest {
   name: string;
-  description?: string;
+  description: string | null;
   capacity: number;
   area?: number;
   location: string;
   floor?: string;
   amenities: string[];
   baseRate: number;
-  hourlyRate?: number;
-  dailyRate?: number;
-  weekendRate?: number;
+  hourlyRate: number | null;
+  dailyRate: number | null;
+  weekendRate: number | null;
   images?: string[];
-  floorPlan?: string;
+  floorPlan: string | null;
 }
 
 export interface UpdateHallRequest {
   name?: string;
-  description?: string;
+  description: string | null;
   capacity?: number;
   area?: number;
   location?: string;
   floor?: string;
   amenities?: string[];
   baseRate?: number;
-  hourlyRate?: number;
-  dailyRate?: number;
-  weekendRate?: number;
+  hourlyRate: number | null;
+  dailyRate: number | null;
+  weekendRate: number | null;
   isActive?: boolean;
   isAvailable?: boolean;
   images?: string[];
-  floorPlan?: string;
+  floorPlan: string | null;
 }
 
 // Hall Booking interfaces
@@ -144,24 +94,24 @@ export interface HallBooking extends BaseEntity {
   endTime: string;
   duration: number;
   guestCount: number;
-  specialRequests?: string;
+  specialRequests: string | null;
   baseAmount: number;
   additionalCharges: number;
   discount: number;
   taxAmount: number;
   totalAmount: number;
-  depositAmount?: number;
+  depositAmount: number | null;
+  balanceAmount: number | null;
   depositPaid: boolean;
   paymentStatus: PaymentStatus;
-  paymentMode?: PaymentMode;
+  paymentMode: PaymentMode | null;
   status: BookingStatus;
   isConfirmed: boolean;
   isCancelled: boolean;
-  cancellationReason?: string;
-  confirmedAt?: Date;
-  cancelledAt?: Date;
+  cancellationReason: string | null;
+  confirmedAt: Date | null;
+  cancelledAt: Date | null;
   hall?: Hall;
-  quotation?: HallQuotation;
   lineItems?: HallLineItem[];
   payments?: HallPayment[];
 }
@@ -176,7 +126,7 @@ export interface CreateBookingRequest {
   startTime: string;
   endTime: string;
   guestCount: number;
-  specialRequests?: string;
+  specialRequests: string | null;
   quotationId?: string;
 }
 
@@ -188,7 +138,7 @@ export interface UpdateBookingRequest {
   startTime?: string;
   endTime?: string;
   guestCount?: number;
-  specialRequests?: string;
+  specialRequests: string | null;
   status?: BookingStatus;
   cancellationReason?: string;
 }
@@ -197,6 +147,9 @@ export interface UpdateBookingRequest {
 export interface HallQuotation extends BaseEntity {
   hallId: string;
   customerId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
   quotationNumber: string;
   eventName: string;
   eventType: EventType;
@@ -213,7 +166,7 @@ export interface HallQuotation extends BaseEntity {
   isAccepted: boolean;
   isExpired: boolean;
   status: QuotationStatus;
-  acceptedAt?: Date;
+  acceptedAt: Date | null;
   hall?: Hall;
   booking?: HallBooking;
 }
@@ -241,16 +194,20 @@ export interface UpdateQuotationRequest {
   lineItems?: CreateLineItemRequest[];
   validUntil?: string;
   status?: QuotationStatus;
+  baseAmount?: number;
+  subtotal?: number;
+  taxAmount?: number;
+  totalAmount?: number;
 }
 
 // Hall Line Item interfaces
 export interface HallLineItem extends BaseEntity {
   hallId: string;
-  quotationId?: string;
-  bookingId?: string;
+  quotationId: string | null;
+  bookingId: string | null;
   itemType: LineItemType;
   itemName: string;
-  description?: string;
+  description: string | null;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -263,7 +220,7 @@ export interface HallLineItem extends BaseEntity {
 export interface CreateLineItemRequest {
   itemType: LineItemType;
   itemName: string;
-  description?: string;
+  description: string | null;
   quantity: number;
   unitPrice: number;
   specifications?: Record<string, any>;
@@ -272,7 +229,7 @@ export interface CreateLineItemRequest {
 export interface UpdateLineItemRequest {
   itemType?: LineItemType;
   itemName?: string;
-  description?: string;
+  description: string | null;
   quantity?: number;
   unitPrice?: number;
   specifications?: Record<string, any>;
@@ -281,17 +238,19 @@ export interface UpdateLineItemRequest {
 // Hall Payment interfaces
 export interface HallPayment extends BaseEntity {
   bookingId: string;
+  paymentNumber: string;
   amount: number;
   paymentType: PaymentType;
   paymentMode: PaymentMode;
+  paymentStatus: PaymentStatus;
   transactionId?: string;
   reference?: string;
-  status: PaymentStatus;
   isRefunded: boolean;
   refundAmount?: number;
   refundReason?: string;
   processedAt?: Date;
   refundedAt?: Date;
+  gatewayResponse?: any;
   booking?: HallBooking;
 }
 

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { HallService } from '@/services/HallService';
 import { logger } from '@/utils/logger';
-import { ApiResponse } from '@/types';
+import { ApiResponse, EventType } from '@/types';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
 import { ValidationMiddleware, ValidationSchemas } from '@/middleware/ValidationMiddleware';
 import { AuthMiddleware } from '@/middleware/AuthMiddleware';
@@ -41,6 +41,16 @@ export class HallController {
   public getHallById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Hall ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const hall = await this.hallService.getHallById(id);
 
       if (!hall) {
@@ -74,19 +84,19 @@ export class HallController {
   public getHalls = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const filters = {
-        location: req.query.location as string,
-        capacity: req.query.capacity ? parseInt(req.query.capacity as string) : undefined,
-        minCapacity: req.query.minCapacity ? parseInt(req.query.minCapacity as string) : undefined,
-        maxCapacity: req.query.maxCapacity ? parseInt(req.query.maxCapacity as string) : undefined,
-        eventType: req.query.eventType as string,
-        date: req.query.date as string,
-        startTime: req.query.startTime as string,
-        endTime: req.query.endTime as string,
-        amenities: req.query.amenities ? (req.query.amenities as string).split(',') : undefined,
-        minRate: req.query.minRate ? parseFloat(req.query.minRate as string) : undefined,
-        maxRate: req.query.maxRate ? parseFloat(req.query.maxRate as string) : undefined,
-        isActive: req.query.isActive ? req.query.isActive === 'true' : undefined,
-        isAvailable: req.query.isAvailable ? req.query.isAvailable === 'true' : undefined,
+        ...(req.query.location && { location: req.query.location as string }),
+        ...(req.query.capacity && { capacity: parseInt(req.query.capacity as string) }),
+        ...(req.query.minCapacity && { minCapacity: parseInt(req.query.minCapacity as string) }),
+        ...(req.query.maxCapacity && { maxCapacity: parseInt(req.query.maxCapacity as string) }),
+        ...(req.query.eventType && { eventType: req.query.eventType as EventType }),
+        ...(req.query.date && { date: req.query.date as string }),
+        ...(req.query.startTime && { startTime: req.query.startTime as string }),
+        ...(req.query.endTime && { endTime: req.query.endTime as string }),
+        ...(req.query.amenities && { amenities: (req.query.amenities as string).split(',') }),
+        ...(req.query.minRate && { minRate: parseFloat(req.query.minRate as string) }),
+        ...(req.query.maxRate && { maxRate: parseFloat(req.query.maxRate as string) }),
+        ...(req.query.isActive !== undefined && { isActive: req.query.isActive === 'true' }),
+        ...(req.query.isAvailable !== undefined && { isAvailable: req.query.isAvailable === 'true' }),
       };
 
       const pagination = {
@@ -121,6 +131,16 @@ export class HallController {
   public updateHall = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Hall ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const hall = await this.hallService.updateHall(id, req.body);
 
       const response: ApiResponse = {
@@ -143,6 +163,16 @@ export class HallController {
   public deleteHall = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Hall ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const deleted = await this.hallService.deleteHall(id);
 
       if (!deleted) {
@@ -175,6 +205,16 @@ export class HallController {
   public checkAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Hall ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const { date, startTime, endTime } = req.query;
 
       if (!date || !startTime || !endTime) {
@@ -221,6 +261,16 @@ export class HallController {
   public getHallWithRelations = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Hall ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const hall = await this.hallService.getHallWithRelations(id);
 
       if (!hall) {
@@ -298,6 +348,16 @@ export class HallController {
   public getHallStatistics = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Hall ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const statistics = await this.hallService.getHallStatistics(id);
 
       const response: ApiResponse = {

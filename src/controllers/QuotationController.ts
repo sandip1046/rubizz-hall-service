@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { QuotationService } from '@/services/QuotationService';
 import { logger } from '@/utils/logger';
-import { ApiResponse } from '@/types';
+import { ApiResponse, EventType, QuotationStatus } from '@/types';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
 import { ValidationMiddleware, ValidationSchemas } from '@/middleware/ValidationMiddleware';
 import { AuthMiddleware } from '@/middleware/AuthMiddleware';
@@ -41,6 +41,16 @@ export class QuotationController {
   public getQuotationById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Quotation ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const quotation = await this.quotationService.getQuotationById(id);
 
       if (!quotation) {
@@ -74,6 +84,16 @@ export class QuotationController {
   public getQuotationByNumber = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { quotationNumber } = req.params;
+      if (!quotationNumber) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Quotation number is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const quotation = await this.quotationService.getQuotationByNumber(quotationNumber);
 
       if (!quotation) {
@@ -107,14 +127,14 @@ export class QuotationController {
   public getQuotations = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const filters = {
-        hallId: req.query.hallId as string,
-        customerId: req.query.customerId as string,
-        eventType: req.query.eventType as string,
-        status: req.query.status as string,
-        isAccepted: req.query.isAccepted ? req.query.isAccepted === 'true' : undefined,
-        isExpired: req.query.isExpired ? req.query.isExpired === 'true' : undefined,
-        eventDate: req.query.eventDate as string,
-        validUntil: req.query.validUntil as string,
+        ...(req.query.hallId && { hallId: req.query.hallId as string }),
+        ...(req.query.customerId && { customerId: req.query.customerId as string }),
+        ...(req.query.eventType && { eventType: req.query.eventType as EventType }),
+        ...(req.query.status && { status: req.query.status as QuotationStatus }),
+        ...(req.query.isAccepted !== undefined && { isAccepted: req.query.isAccepted === 'true' }),
+        ...(req.query.isExpired !== undefined && { isExpired: req.query.isExpired === 'true' }),
+        ...(req.query.eventDate && { eventDate: req.query.eventDate as string }),
+        ...(req.query.validUntil && { validUntil: req.query.validUntil as string }),
       };
 
       const pagination = {
@@ -149,6 +169,16 @@ export class QuotationController {
   public updateQuotation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Quotation ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const quotation = await this.quotationService.updateQuotation(id, req.body);
 
       const response: ApiResponse = {
@@ -171,6 +201,16 @@ export class QuotationController {
   public acceptQuotation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Quotation ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const quotation = await this.quotationService.acceptQuotation(id);
 
       const response: ApiResponse = {
@@ -193,6 +233,16 @@ export class QuotationController {
   public rejectQuotation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Quotation ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const quotation = await this.quotationService.rejectQuotation(id);
 
       const response: ApiResponse = {
@@ -215,6 +265,16 @@ export class QuotationController {
   public expireQuotation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Quotation ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const quotation = await this.quotationService.expireQuotation(id);
 
       const response: ApiResponse = {
@@ -237,6 +297,16 @@ export class QuotationController {
   public sendQuotation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
+      if (!id) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Quotation ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
       const quotation = await this.quotationService.sendQuotation(id);
 
       const response: ApiResponse = {
@@ -357,6 +427,16 @@ export class QuotationController {
   public getHallQuotations = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { hallId } = req.params;
+      if (!hallId) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Hall ID is required',
+          timestamp: new Date().toISOString(),
+          requestId: req.headers['x-request-id'] as string,
+        };
+        res.status(400).json(response);
+        return;
+      }
 
       const filters = {
         hallId,
