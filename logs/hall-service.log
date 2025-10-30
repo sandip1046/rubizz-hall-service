@@ -2447,3 +2447,155 @@
   message: 'Redis service health check failed:',
   timestamp: '2025-10-30 10:01:38.098'
 }
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  database: 'MongoDB (Mongoose)',
+  level: 'info',
+  message: 'Database connected successfully',
+  timestamp: '2025-10-30 11:27:25.379'
+}
+{
+  message: 'Database connected successfully',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:27:25.382'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  database: 'MongoDB (Mongoose)',
+  level: 'info',
+  message: 'Database connected successfully',
+  timestamp: '2025-10-30 11:27:29.298'
+}
+{
+  message: 'Database connected successfully',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:27:29.304'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  error: 'Error',
+  level: 'error',
+  message: 'Redis service health check failed:',
+  timestamp: '2025-10-30 11:27:31.360'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  database: 'MongoDB (Mongoose)',
+  level: 'info',
+  message: 'Database connected successfully',
+  timestamp: '2025-10-30 11:28:50.745'
+}
+{
+  message: 'Database connected successfully',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:28:50.748'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  error: 'Error',
+  level: 'error',
+  message: 'Redis service health check failed:',
+  timestamp: '2025-10-30 11:28:52.834'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  database: 'MongoDB (Mongoose)',
+  level: 'info',
+  message: 'Database connected successfully',
+  timestamp: '2025-10-30 11:33:49.705'
+}
+{
+  message: 'Database connected successfully',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:33:49.727'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  database: 'MongoDB (Mongoose)',
+  level: 'info',
+  message: 'Database connected successfully',
+  timestamp: '2025-10-30 11:33:54.035'
+}
+{
+  message: 'Database connected successfully',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:33:54.038'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  error: 'Error',
+  level: 'error',
+  message: 'Redis service health check failed:',
+  timestamp: '2025-10-30 11:33:56.102'
+}
+{
+  message: 'Redis service health check failed',
+  level: 'error',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:33:56.103'
+}
+{
+  message: 'Redis service connected successfully',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:33:56.103'
+}
+{
+  message: 'GraphQL endpoint mounted at /graphql',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:33:57.023'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  addr: '0.0.0.0:50051',
+  level: 'info',
+  message: 'gRPC server started',
+  timestamp: '2025-10-30 11:33:57.036'
+}
+{
+  message: 'WebSocket server started at /ws',
+  level: 'info',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:33:57.039'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  port: 3007,
+  environment: 'development',
+  level: 'info',
+  message: 'Hall Management Service started',
+  timestamp: '2025-10-30 11:33:57.042'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  error: 'Connection error: ',
+  level: 'error',
+  message: 'Kafka start failed',
+  timestamp: '2025-10-30 11:34:07.439'
+}

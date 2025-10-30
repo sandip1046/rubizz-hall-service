@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package rubizz.hall;
+
+message Empty {}
+
+message Pagination {
+  int32 page = 1;
+  int32 limit = 2;
+  string sortBy = 3;
+  string sortOrder = 4;
+}
+
+message HallId { string id = 1; }
+message BookingId { string id = 1; }
+message QuotationId { string id = 1; }
+
+message Hall {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int32 capacity = 4;
+  double area = 5;
+  string location = 6;
+  repeated string amenities = 7;
+  double baseRate = 8;
+  double hourlyRate = 9;
+  double dailyRate = 10;
+  double weekendRate = 11;
+  bool isActive = 12;
+  bool isAvailable = 13;
+}
+
+message CreateHallRequest {
+  string name = 1;
+  string description = 2;
+  int32 capacity = 3;
+  double area = 4;
+  string location = 5;
+  repeated string amenities = 6;
+  double baseRate = 7;
+  double hourlyRate = 8;
+  double dailyRate = 9;
+  double weekendRate = 10;
+  repeated string images = 11;
+  string floorPlan = 12;
+}
+
+message UpdateHallRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int32 capacity = 4;
+  double area = 5;
+  string location = 6;
+  repeated string amenities = 7;
+  double baseRate = 8;
+  double hourlyRate = 9;
+  double dailyRate = 10;
+  double weekendRate = 11;
+  bool isActive = 12;
+  bool isAvailable = 13;
+  repeated string images = 14;
+  string floorPlan = 15;
+}
+
+message HallList {
+  repeated Hall data = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  int32 total = 4;
+}
+
+message CreateBookingRequest {
+  string hallId = 1;
+  string customerId = 2;
+  string eventName = 3;
+  string eventType = 4;
+  string startDate = 5;
+  string endDate = 6;
+  string startTime = 7;
+  string endTime = 8;
+  int32 guestCount = 9;
+  string specialRequests = 10;
+}
+
+message Booking {
+  string id = 1;
+  string hallId = 2;
+  string customerId = 3;
+  string eventName = 4;
+  string eventType = 5;
+  string startDate = 6;
+  string endDate = 7;
+  string startTime = 8;
+  string endTime = 9;
+  int32 guestCount = 10;
+  string status = 11;
+}
+
+message CreateQuotationRequest {
+  string hallId = 1;
+  string customerId = 2;
+  string eventName = 3;
+  string eventType = 4;
+  string eventDate = 5;
+  string startTime = 6;
+  string endTime = 7;
+  int32 guestCount = 8;
+}
+
+message Quotation {
+  string id = 1;
+  string hallId = 2;
+  string customerId = 3;
+  string quotationNumber = 4;
+  string eventName = 5;
+  string eventType = 6;
+  string status = 7;
+}
+
+service HallService {
+  rpc GetHall (HallId) returns (Hall);
+  rpc ListHalls (Pagination) returns (HallList);
+  rpc CreateHall (CreateHallRequest) returns (Hall);
+  rpc UpdateHall (UpdateHallRequest) returns (Hall);
+}
+
+service BookingService {
+  rpc GetBooking (BookingId) returns (Booking);
+  rpc CreateBooking (CreateBookingRequest) returns (Booking);
+}
+
+service QuotationService {
+  rpc GetQuotation (QuotationId) returns (Quotation);
+  rpc CreateQuotation (CreateQuotationRequest) returns (Quotation);
+}
+
+

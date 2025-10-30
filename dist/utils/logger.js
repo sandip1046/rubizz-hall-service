@@ -20,7 +20,24 @@ const consoleFormat = winston_1.default.format.combine(winston_1.default.format.
 }), winston_1.default.format.printf(({ timestamp, level, message, ...meta }) => {
     let log = `${timestamp} [${level}]: ${message}`;
     if (Object.keys(meta).length > 0) {
-        log += `\n${JSON.stringify(meta, null, 2)}`;
+        const seen = new WeakSet();
+        const safe = (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+                if (seen.has(value))
+                    return '[Circular]';
+                seen.add(value);
+            }
+            if (value instanceof Error) {
+                return { message: value.message, stack: value.stack, name: value.name };
+            }
+            return value;
+        };
+        try {
+            log += `\n${JSON.stringify(meta, safe, 2)}`;
+        }
+        catch {
+            log += `\n[unserializable meta]`;
+        }
     }
     return log;
 }));

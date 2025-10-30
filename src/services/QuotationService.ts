@@ -23,6 +23,8 @@ import { BookingService } from './BookingService';
 import HallModel from '@/models/Hall';
 import HallQuotationModel from '@/models/HallQuotation';
 import HallLineItemModel from '@/models/HallLineItem';
+import { realtimeBus } from '@/realtime/eventBus';
+import { publishEvent } from '@/events/kafka';
 
 export class QuotationService {
   private hallService: HallService;
@@ -121,6 +123,9 @@ export class QuotationService {
         hallId: quotation?.hallId,
         customerId: quotation?.customerId 
       });
+
+      realtimeBus.emit('event', { type: 'quotation.created', payload: quotation });
+      await publishEvent('hall.quotation', { type: 'quotation.created', quotation });
 
       return { ...quotation, lineItems: [], acceptedAt: null } as HallQuotation;
     } catch (error) {
@@ -339,6 +344,9 @@ export class QuotationService {
 
       logger.info('Quotation updated successfully', { quotationId: id });
 
+      realtimeBus.emit('event', { type: 'quotation.updated', payload: updatedQuotation });
+      await publishEvent('hall.quotation', { type: 'quotation.updated', quotation: updatedQuotation });
+
       return updatedQuotation as HallQuotation;
     } catch (error) {
       logger.error('Failed to update quotation:', error);
@@ -423,6 +431,9 @@ export class QuotationService {
         bookingId: booking.id 
       });
 
+      realtimeBus.emit('event', { type: 'quotation.accepted', payload: updatedQuotation });
+      await publishEvent('hall.quotation', { type: 'quotation.accepted', quotation: updatedQuotation });
+
       return updatedQuotation as HallQuotation;
     } catch (error) {
       logger.error('Failed to accept quotation:', error);
@@ -464,6 +475,9 @@ export class QuotationService {
       await this.redisService.deleteCache(`quotation:${id}`);
 
       logger.info('Quotation rejected successfully', { quotationId: id });
+
+      realtimeBus.emit('event', { type: 'quotation.rejected', payload: updatedQuotation });
+      await publishEvent('hall.quotation', { type: 'quotation.rejected', quotation: updatedQuotation });
 
       return updatedQuotation as HallQuotation;
     } catch (error) {
@@ -507,6 +521,9 @@ export class QuotationService {
 
       logger.info('Quotation expired successfully', { quotationId: id });
 
+      realtimeBus.emit('event', { type: 'quotation.expired', payload: updatedQuotation });
+      await publishEvent('hall.quotation', { type: 'quotation.expired', quotation: updatedQuotation });
+
       return updatedQuotation as HallQuotation;
     } catch (error) {
       logger.error('Failed to expire quotation:', error);
@@ -548,6 +565,9 @@ export class QuotationService {
       await this.redisService.deleteCache(`quotation:${id}`);
 
       logger.info('Quotation sent successfully', { quotationId: id });
+
+      realtimeBus.emit('event', { type: 'quotation.sent', payload: updatedQuotation });
+      await publishEvent('hall.quotation', { type: 'quotation.sent', quotation: updatedQuotation });
 
       return updatedQuotation as HallQuotation;
     } catch (error) {

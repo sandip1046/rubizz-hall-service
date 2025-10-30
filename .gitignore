@@ -8,3 +8,4 @@ node_modules
 .env.test.production
 .env.test.development
 .env.test.local
+env.example

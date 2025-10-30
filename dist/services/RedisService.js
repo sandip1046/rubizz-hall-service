@@ -27,7 +27,7 @@ class RedisService {
             }
         }
         catch (error) {
-            logger_1.logger.error('Failed to connect to Redis service:', error);
+            logger_1.logger.error('Failed to connect to Redis service:', { error: error?.message, stack: error?.stack });
             this.isConnected = false;
             throw error;
         }
@@ -44,7 +44,7 @@ class RedisService {
             return await this.setCache(`session:${sessionId}`, data, ttl);
         }
         catch (error) {
-            logger_1.logger.error('Failed to set session:', error);
+            logger_1.logger.error('Failed to set session:', { error: error?.message });
             return false;
         }
     }
@@ -53,7 +53,7 @@ class RedisService {
             return await this.getCache(`session:${sessionId}`);
         }
         catch (error) {
-            logger_1.logger.error('Failed to get session:', error);
+            logger_1.logger.error('Failed to get session:', { error: error?.message });
             return null;
         }
     }
@@ -62,7 +62,7 @@ class RedisService {
             return await this.deleteCache(`session:${sessionId}`);
         }
         catch (error) {
-            logger_1.logger.error('Failed to delete session:', error);
+            logger_1.logger.error('Failed to delete session:', { error: error?.message });
             return false;
         }
     }
@@ -76,7 +76,7 @@ class RedisService {
             return response.success;
         }
         catch (error) {
-            logger_1.logger.error('Failed to set cache:', error);
+            logger_1.logger.error('Failed to set cache:', { error: error?.message });
             return false;
         }
     }
@@ -89,7 +89,7 @@ class RedisService {
             return null;
         }
         catch (error) {
-            logger_1.logger.error('Failed to get cache:', error);
+            logger_1.logger.error('Failed to get cache:', { error: error?.message });
             return null;
         }
     }
@@ -99,7 +99,7 @@ class RedisService {
             return response.success;
         }
         catch (error) {
-            logger_1.logger.error('Failed to delete cache:', error);
+            logger_1.logger.error('Failed to delete cache:', { error: error?.message });
             return false;
         }
     }
@@ -112,7 +112,7 @@ class RedisService {
             return response.success ? response.data : 0;
         }
         catch (error) {
-            logger_1.logger.error('Failed to push to queue:', error);
+            logger_1.logger.error('Failed to push to queue:', { error: error?.message });
             return 0;
         }
     }
@@ -125,7 +125,7 @@ class RedisService {
             return null;
         }
         catch (error) {
-            logger_1.logger.error('Failed to pop from queue:', error);
+            logger_1.logger.error('Failed to pop from queue:', { error: error?.message });
             return null;
         }
     }
@@ -135,7 +135,7 @@ class RedisService {
             return response.success ? response.data : 0;
         }
         catch (error) {
-            logger_1.logger.error('Failed to get queue length:', error);
+            logger_1.logger.error('Failed to get queue length:', { error: error?.message });
             return 0;
         }
     }
@@ -149,7 +149,7 @@ class RedisService {
             return response.success;
         }
         catch (error) {
-            logger_1.logger.error('Failed to hset:', error);
+            logger_1.logger.error('Failed to hset:', { error: error?.message });
             return false;
         }
     }
@@ -162,7 +162,7 @@ class RedisService {
             return null;
         }
         catch (error) {
-            logger_1.logger.error('Failed to hget:', error);
+            logger_1.logger.error('Failed to hget:', { error: error?.message });
             return null;
         }
     }
@@ -179,7 +179,7 @@ class RedisService {
             return {};
         }
         catch (error) {
-            logger_1.logger.error('Failed to hgetall:', error);
+            logger_1.logger.error('Failed to hgetall:', { error: error?.message });
             return {};
         }
     }
@@ -189,7 +189,7 @@ class RedisService {
             return response.success;
         }
         catch (error) {
-            logger_1.logger.error('Failed to hdel:', error);
+            logger_1.logger.error('Failed to hdel:', { error: error?.message });
             return false;
         }
     }
@@ -202,7 +202,7 @@ class RedisService {
             return response.success ? response.data : 0;
         }
         catch (error) {
-            logger_1.logger.error('Failed to lpush:', error);
+            logger_1.logger.error('Failed to lpush:', { error: error?.message });
             return 0;
         }
     }
@@ -215,7 +215,7 @@ class RedisService {
             return response.success ? response.data : 0;
         }
         catch (error) {
-            logger_1.logger.error('Failed to rpush:', error);
+            logger_1.logger.error('Failed to rpush:', { error: error?.message });
             return 0;
         }
     }
@@ -228,7 +228,7 @@ class RedisService {
             return null;
         }
         catch (error) {
-            logger_1.logger.error('Failed to lpop:', error);
+            logger_1.logger.error('Failed to lpop:', { error: error?.message });
             return null;
         }
     }
@@ -241,7 +241,7 @@ class RedisService {
             return null;
         }
         catch (error) {
-            logger_1.logger.error('Failed to rpop:', error);
+            logger_1.logger.error('Failed to rpop:', { error: error?.message });
             return null;
         }
     }
@@ -254,7 +254,7 @@ class RedisService {
             return [];
         }
         catch (error) {
-            logger_1.logger.error('Failed to lrange:', error);
+            logger_1.logger.error('Failed to lrange:', { error: error?.message });
             return [];
         }
     }
@@ -267,7 +267,7 @@ class RedisService {
             return response.success ? response.data : 0;
         }
         catch (error) {
-            logger_1.logger.error('Failed to sadd:', error);
+            logger_1.logger.error('Failed to sadd:', { error: error?.message });
             return 0;
         }
     }
@@ -280,7 +280,7 @@ class RedisService {
             return [];
         }
         catch (error) {
-            logger_1.logger.error('Failed to smembers:', error);
+            logger_1.logger.error('Failed to smembers:', { error: error?.message });
             return [];
         }
     }
@@ -293,7 +293,7 @@ class RedisService {
             return response.success ? response.data : 0;
         }
         catch (error) {
-            logger_1.logger.error('Failed to srem:', error);
+            logger_1.logger.error('Failed to srem:', { error: error?.message });
             return 0;
         }
     }
@@ -303,7 +303,7 @@ class RedisService {
             return response.success ? response.data : false;
         }
         catch (error) {
-            logger_1.logger.error('Failed to sismember:', error);
+            logger_1.logger.error('Failed to sismember:', { error: error?.message });
             return false;
         }
     }
@@ -313,7 +313,7 @@ class RedisService {
             return response.success ? response.data : false;
         }
         catch (error) {
-            logger_1.logger.error('Failed to check existence:', error);
+            logger_1.logger.error('Failed to check existence:', { error: error?.message });
             return false;
         }
     }
@@ -326,7 +326,7 @@ class RedisService {
             return response.success;
         }
         catch (error) {
-            logger_1.logger.error('Failed to set expiration:', error);
+            logger_1.logger.error('Failed to set expiration:', { error: error?.message });
             return false;
         }
     }
@@ -336,7 +336,7 @@ class RedisService {
             return response.success ? response.data : -1;
         }
         catch (error) {
-            logger_1.logger.error('Failed to get TTL:', error);
+            logger_1.logger.error('Failed to get TTL:', { error: error?.message });
             return -1;
         }
     }
@@ -349,7 +349,7 @@ class RedisService {
             return { session: false, cache: false, queue: false };
         }
         catch (error) {
-            logger_1.logger.error('Redis service health check failed:', error);
+            logger_1.logger.error('Redis service health check failed:', { error: error?.message });
             return { session: false, cache: false, queue: false };
         }
     }

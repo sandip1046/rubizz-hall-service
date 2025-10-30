@@ -17,6 +17,8 @@ const BookingService_1 = require("./BookingService");
 const Hall_1 = __importDefault(require("@/models/Hall"));
 const HallQuotation_1 = __importDefault(require("@/models/HallQuotation"));
 const HallLineItem_1 = __importDefault(require("@/models/HallLineItem"));
+const eventBus_1 = require("@/realtime/eventBus");
+const kafka_1 = require("@/events/kafka");
 class QuotationService {
     constructor() {
         this.hallService = new HallService_1.HallService();
@@ -84,6 +86,8 @@ class QuotationService {
                 hallId: quotation?.hallId,
                 customerId: quotation?.customerId
             });
+            eventBus_1.realtimeBus.emit('event', { type: 'quotation.created', payload: quotation });
+            await (0, kafka_1.publishEvent)('hall.quotation', { type: 'quotation.created', quotation });
             return { ...quotation, lineItems: [], acceptedAt: null };
         }
         catch (error) {
@@ -231,6 +235,8 @@ class QuotationService {
             await this.clearQuotationCache();
             await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation updated successfully', { quotationId: id });
+            eventBus_1.realtimeBus.emit('event', { type: 'quotation.updated', payload: updatedQuotation });
+            await (0, kafka_1.publishEvent)('hall.quotation', { type: 'quotation.updated', quotation: updatedQuotation });
             return updatedQuotation;
         }
         catch (error) {
@@ -287,6 +293,8 @@ class QuotationService {
                 quotationId: id,
                 bookingId: booking.id
             });
+            eventBus_1.realtimeBus.emit('event', { type: 'quotation.accepted', payload: updatedQuotation });
+            await (0, kafka_1.publishEvent)('hall.quotation', { type: 'quotation.accepted', quotation: updatedQuotation });
             return updatedQuotation;
         }
         catch (error) {
@@ -314,6 +322,8 @@ class QuotationService {
             await this.clearQuotationCache();
             await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation rejected successfully', { quotationId: id });
+            eventBus_1.realtimeBus.emit('event', { type: 'quotation.rejected', payload: updatedQuotation });
+            await (0, kafka_1.publishEvent)('hall.quotation', { type: 'quotation.rejected', quotation: updatedQuotation });
             return updatedQuotation;
         }
         catch (error) {
@@ -341,6 +351,8 @@ class QuotationService {
             await this.clearQuotationCache();
             await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation expired successfully', { quotationId: id });
+            eventBus_1.realtimeBus.emit('event', { type: 'quotation.expired', payload: updatedQuotation });
+            await (0, kafka_1.publishEvent)('hall.quotation', { type: 'quotation.expired', quotation: updatedQuotation });
             return updatedQuotation;
         }
         catch (error) {
@@ -368,6 +380,8 @@ class QuotationService {
             await this.clearQuotationCache();
             await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation sent successfully', { quotationId: id });
+            eventBus_1.realtimeBus.emit('event', { type: 'quotation.sent', payload: updatedQuotation });
+            await (0, kafka_1.publishEvent)('hall.quotation', { type: 'quotation.sent', quotation: updatedQuotation });
             return updatedQuotation;
         }
         catch (error) {

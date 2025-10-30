@@ -17,6 +17,8 @@ import { Helpers } from '@/utils/helpers';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
 import { CostCalculator } from '@/utils/costCalculator';
 import { HallService } from './HallService';
+import { realtimeBus } from '@/realtime/eventBus';
+import { publishEvent } from '@/events/kafka';
 import HallModel from '@/models/Hall';
 import HallBookingModel from '@/models/HallBooking';
 
@@ -114,6 +116,9 @@ export class BookingService {
         hallId: booking.hallId,
         customerId: booking.customerId 
       });
+
+      realtimeBus.emit('event', { type: 'booking.created', payload: booking });
+      await publishEvent('hall.booking', { type: 'booking.created', booking });
 
       return booking;
     } catch (error) {
@@ -295,6 +300,9 @@ export class BookingService {
 
       logger.info('Booking updated successfully', { bookingId: id });
 
+      realtimeBus.emit('event', { type: 'booking.updated', payload: updatedBooking });
+      await publishEvent('hall.booking', { type: 'booking.updated', booking: updatedBooking });
+
       return updatedBooking as HallBooking;
     } catch (error) {
       logger.error('Failed to update booking:', error);
@@ -354,6 +362,9 @@ export class BookingService {
         reason 
       });
 
+      realtimeBus.emit('event', { type: 'booking.cancelled', payload: updatedBooking });
+      await publishEvent('hall.booking', { type: 'booking.cancelled', booking: updatedBooking });
+
       return updatedBooking as HallBooking;
     } catch (error) {
       logger.error('Failed to cancel booking:', error);
@@ -399,6 +410,9 @@ export class BookingService {
       await this.redisService.deleteCache(`booking:${id}`);
 
       logger.info('Booking confirmed successfully', { bookingId: id });
+
+      realtimeBus.emit('event', { type: 'booking.confirmed', payload: updatedBooking });
+      await publishEvent('hall.booking', { type: 'booking.confirmed', booking: updatedBooking });
 
       return updatedBooking as HallBooking;
     } catch (error) {
@@ -446,6 +460,9 @@ export class BookingService {
 
       logger.info('Booking checked in successfully', { bookingId: id });
 
+      realtimeBus.emit('event', { type: 'booking.checked_in', payload: updatedBooking });
+      await publishEvent('hall.booking', { type: 'booking.checked_in', booking: updatedBooking });
+
       return updatedBooking as HallBooking;
     } catch (error) {
       logger.error('Failed to check in booking:', error);
@@ -487,6 +504,9 @@ export class BookingService {
       await this.redisService.deleteCache(`booking:${id}`);
 
       logger.info('Booking checked out successfully', { bookingId: id });
+
+      realtimeBus.emit('event', { type: 'booking.checked_out', payload: updatedBooking });
+      await publishEvent('hall.booking', { type: 'booking.checked_out', booking: updatedBooking });
 
       return updatedBooking as HallBooking;
     } catch (error) {

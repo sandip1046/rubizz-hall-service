@@ -1,0 +1,1 @@
+{"version":3,"file":"eventBus.d.ts","sourceRoot":"","sources":["../../src/realtime/eventBus.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,YAAY,EAAE,MAAM,QAAQ,CAAC;AAEtC,MAAM,MAAM,aAAa,GAAG;IAC1B,IAAI,EAAE,MAAM,CAAC;IACb,OAAO,EAAE,GAAG,CAAC;CACd,CAAC;AAEF,cAAM,WAAY,SAAQ,YAAY;CAAG;AAEzC,eAAO,MAAM,WAAW,aAAoB,CAAC"}

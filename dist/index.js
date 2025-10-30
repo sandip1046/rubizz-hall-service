@@ -18,6 +18,10 @@ const HealthController_1 = require("@/controllers/HealthController");
 const HallController_1 = require("@/controllers/HallController");
 const BookingController_1 = require("@/controllers/BookingController");
 const QuotationController_1 = require("@/controllers/QuotationController");
+const server_1 = require("@/graphql/server");
+const server_2 = require("@/grpc/server");
+const server_3 = require("@/realtime/server");
+const kafka_1 = require("@/events/kafka");
 class HallService {
     constructor() {
         this.app = (0, express_1.default)();
@@ -109,6 +113,9 @@ class HallService {
             logger_1.logger.info('Database connected successfully');
             await this.redisService.connect();
             logger_1.logger.info('Redis service connected successfully');
+            await (0, server_1.applyGraphQL)(this.app);
+            logger_1.logger.info('GraphQL endpoint mounted at /graphql');
+            await (0, server_2.startGrpcServer)();
             this.server = this.app.listen(config_1.config.server.port, () => {
                 logger_1.logger.info(`Hall Management Service started`, {
                     port: config_1.config.server.port,
@@ -117,10 +124,12 @@ class HallService {
                     version: config_1.config.server.serviceVersion,
                 });
             });
+            (0, server_3.startWebSocketServer)(this.server);
+            await (0, kafka_1.startKafka)();
             this.setupGracefulShutdown();
         }
         catch (error) {
-            logger_1.logger.error('Failed to start Hall Management Service:', error);
+            logger_1.logger.error('Failed to start Hall Management Service:', { error: error?.message, stack: error?.stack });
             process.exit(1);
         }
     }
@@ -153,11 +162,11 @@ class HallService {
         process.on('SIGINT', () => gracefulShutdown('SIGINT'));
         process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2'));
         process.on('uncaughtException', (error) => {
-            logger_1.logger.error('Uncaught Exception:', error);
+            logger_1.logger.error('Uncaught Exception:', { error: error?.message, stack: error?.stack });
             gracefulShutdown('uncaughtException');
         });
         process.on('unhandledRejection', (reason, promise) => {
-            logger_1.logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+            logger_1.logger.error('Unhandled Rejection', { reason: reason?.message ?? String(reason) });
             gracefulShutdown('unhandledRejection');
         });
     }
@@ -170,7 +179,7 @@ class HallService {
 }
 const hallService = new HallService();
 hallService.start().catch((error) => {
-    logger_1.logger.error('Failed to start service:', error);
+    logger_1.logger.error('Failed to start service:', { error: error?.message, stack: error?.stack });
     process.exit(1);
 });
 exports.default = hallService;

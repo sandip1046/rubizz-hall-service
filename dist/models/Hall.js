@@ -36,7 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HallModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const HallSchema = new mongoose_1.Schema({
-    name: { type: String, required: true, index: true },
+    name: { type: String, required: true },
     description: { type: String, default: null },
     capacity: { type: Number, required: true, index: true },
     area: { type: Number, required: true, default: 0 },

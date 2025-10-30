@@ -15,6 +15,11 @@ import { HealthController } from '@/controllers/HealthController';
 import { HallController } from '@/controllers/HallController';
 import { BookingController } from '@/controllers/BookingController';
 import { QuotationController } from '@/controllers/QuotationController';
+import { applyGraphQL } from '@/graphql/server';
+import type { Application as ExpressApp } from 'express';
+import { startGrpcServer } from '@/grpc/server';
+import { startWebSocketServer } from '@/realtime/server';
+import { startKafka } from '@/events/kafka';
 
 class HallService {
   private app: express.Application;
@@ -152,6 +157,13 @@ class HallService {
       await this.redisService.connect();
       logger.info('Redis service connected successfully');
 
+      // GraphQL server
+      await applyGraphQL(this.app as unknown as ExpressApp);
+      logger.info('GraphQL endpoint mounted at /graphql');
+
+      // gRPC server
+      await startGrpcServer();
+
       // Start server
       this.server = this.app.listen(config.server.port, () => {
         logger.info(`Hall Management Service started`, {
@@ -161,6 +173,12 @@ class HallService {
           version: config.server.serviceVersion,
         });
       });
+
+      // WebSocket server
+      startWebSocketServer(this.server);
+
+      // Kafka producer/consumer
+      await startKafka();
 
       // Graceful shutdown handlers
       this.setupGracefulShutdown();

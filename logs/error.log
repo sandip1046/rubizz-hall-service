@@ -2267,3 +2267,42 @@
   message: 'Redis service health check failed:',
   timestamp: '2025-10-30 10:01:38.098'
 }
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  error: 'Error',
+  level: 'error',
+  message: 'Redis service health check failed:',
+  timestamp: '2025-10-30 11:27:31.360'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  error: 'Error',
+  level: 'error',
+  message: 'Redis service health check failed:',
+  timestamp: '2025-10-30 11:28:52.834'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  error: 'Error',
+  level: 'error',
+  message: 'Redis service health check failed:',
+  timestamp: '2025-10-30 11:33:56.102'
+}
+{
+  message: 'Redis service health check failed',
+  level: 'error',
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  timestamp: '2025-10-30 11:33:56.103'
+}
+{
+  service: 'rubizz-hall-service',
+  version: '1.0.0',
+  error: 'Connection error: ',
+  level: 'error',
+  message: 'Kafka start failed',
+  timestamp: '2025-10-30 11:34:07.439'
+}

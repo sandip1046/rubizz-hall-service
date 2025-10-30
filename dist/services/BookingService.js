@@ -13,6 +13,8 @@ const helpers_1 = require("@/utils/helpers");
 const ErrorHandler_1 = require("@/middleware/ErrorHandler");
 const costCalculator_1 = require("@/utils/costCalculator");
 const HallService_1 = require("./HallService");
+const eventBus_1 = require("@/realtime/eventBus");
+const kafka_1 = require("@/events/kafka");
 const Hall_1 = __importDefault(require("@/models/Hall"));
 const HallBooking_1 = __importDefault(require("@/models/HallBooking"));
 class BookingService {
@@ -75,6 +77,8 @@ class BookingService {
                 hallId: booking.hallId,
                 customerId: booking.customerId
             });
+            eventBus_1.realtimeBus.emit('event', { type: 'booking.created', payload: booking });
+            await (0, kafka_1.publishEvent)('hall.booking', { type: 'booking.created', booking });
             return booking;
         }
         catch (error) {
@@ -195,6 +199,8 @@ class BookingService {
             await this.clearBookingCache();
             await this.redisService.deleteCache(`booking:${id}`);
             logger_1.logger.info('Booking updated successfully', { bookingId: id });
+            eventBus_1.realtimeBus.emit('event', { type: 'booking.updated', payload: updatedBooking });
+            await (0, kafka_1.publishEvent)('hall.booking', { type: 'booking.updated', booking: updatedBooking });
             return updatedBooking;
         }
         catch (error) {
@@ -232,6 +238,8 @@ class BookingService {
                 refundAmount,
                 reason
             });
+            eventBus_1.realtimeBus.emit('event', { type: 'booking.cancelled', payload: updatedBooking });
+            await (0, kafka_1.publishEvent)('hall.booking', { type: 'booking.cancelled', booking: updatedBooking });
             return updatedBooking;
         }
         catch (error) {
@@ -263,6 +271,8 @@ class BookingService {
             await this.clearBookingCache();
             await this.redisService.deleteCache(`booking:${id}`);
             logger_1.logger.info('Booking confirmed successfully', { bookingId: id });
+            eventBus_1.realtimeBus.emit('event', { type: 'booking.confirmed', payload: updatedBooking });
+            await (0, kafka_1.publishEvent)('hall.booking', { type: 'booking.confirmed', booking: updatedBooking });
             return updatedBooking;
         }
         catch (error) {
@@ -293,6 +303,8 @@ class BookingService {
             await this.clearBookingCache();
             await this.redisService.deleteCache(`booking:${id}`);
             logger_1.logger.info('Booking checked in successfully', { bookingId: id });
+            eventBus_1.realtimeBus.emit('event', { type: 'booking.checked_in', payload: updatedBooking });
+            await (0, kafka_1.publishEvent)('hall.booking', { type: 'booking.checked_in', booking: updatedBooking });
             return updatedBooking;
         }
         catch (error) {
@@ -320,6 +332,8 @@ class BookingService {
             await this.clearBookingCache();
             await this.redisService.deleteCache(`booking:${id}`);
             logger_1.logger.info('Booking checked out successfully', { bookingId: id });
+            eventBus_1.realtimeBus.emit('event', { type: 'booking.checked_out', payload: updatedBooking });
+            await (0, kafka_1.publishEvent)('hall.booking', { type: 'booking.checked_out', booking: updatedBooking });
             return updatedBooking;
         }
         catch (error) {

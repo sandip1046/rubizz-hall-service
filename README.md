@@ -45,7 +45,11 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
 - **Runtime**: Node.js 18+ with TypeScript
 - **Framework**: Express.js
 - **Database**: MongoDB with Mongoose ODM
-- **Cache**: Multiple Redis instances (Session, Cache, Queue) with ioredis
+- **API Protocols**: REST + GraphQL (/graphql)
+- **Internal RPC**: gRPC (default on GRPC_PORT)
+- **Realtime**: WebSocket (/ws)
+- **Events**: Kafka (hall.booking, hall.quotation topics)
+- **Cache**: Redis service via axios (`REDIS_SERVICE_URL`)
 - **Email**: Nodemailer with SMTP and Brevo support
 - **Authentication**: JWT with role-based access control
 - **Validation**: Joi for request validation
@@ -101,9 +105,13 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
    # Edit .env with your configuration
    ```
 
-4. **Database Setup**
-   - Ensure `DATABASE_URL` in `.env` points to your MongoDB Atlas connection string.
-   - Collections are created automatically by Mongoose on first write.
+4. **Environment**
+   - Ensure `.env` contains at least:
+     - `DATABASE_URL` (MongoDB connection)
+     - `REDIS_SERVICE_URL` (e.g., https://rubizz-redis-service.onrender.com/api/v1/redis)
+     - `JWT_SECRET`, `JWT_REFRESH_SECRET`, `API_GATEWAY_SECRET`
+     - `PORT` (HTTP), `GRPC_PORT` (gRPC)
+     - `KAFKA_BROKERS` (e.g., localhost:9092), `KAFKA_CLIENT_ID`, `KAFKA_GROUP_ID`
 
 5. **Test Configuration**
    ```bash
@@ -121,6 +129,21 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
    npm run build
    npm start
    ```
+
+## Protocol Endpoints
+
+- **REST**: under `/api/v1/*` (existing controllers unchanged)
+- **GraphQL**: `POST /graphql`
+  - Query example:
+    ```graphql
+    query { halls(pagination: { page: 1, limit: 10 }) { data { id name } pagination { total } } }
+    ```
+- **WebSocket**: `ws://<host>/ws`
+  - Receives JSON events like `booking.created`, `quotation.accepted`, etc.
+- **gRPC**: binds on `0.0.0.0:GRPC_PORT` using `src/grpc/proto/hall.proto`
+- **Kafka**:
+  - Produces to `hall.booking` and `hall.quotation`
+  - Consumer subscribes to both topics (logs inbound events)
 
 ## 📋 API Endpoints
 
@@ -481,11 +504,15 @@ spec:
             secretKeyRef:
               name: hall-service-secrets
               key: database-url
-        - name: REDIS_URL
+        - name: REDIS_SERVICE_URL
           valueFrom:
             secretKeyRef:
               name: hall-service-secrets
-              key: redis-url
+              key: redis-service-url
+        - name: GRPC_PORT
+          value: "50051"
+        - name: KAFKA_BROKERS
+          value: "kafka:9092"
         livenessProbe:
           httpGet:
             path: /health/live
@@ -640,6 +667,12 @@ For support and questions:
 - **Slack**: #hall-service-support
 
 ## 🔄 Changelog
+
+### v1.3.0 (2025-10-30)
+- **NEW**: GraphQL endpoint at `/graphql` with schema/resolvers
+- **NEW**: gRPC server and proto at `src/grpc/proto/hall.proto`
+- **NEW**: WebSocket realtime at `/ws` broadcasting booking/quotation events
+- **NEW**: Kafka producers/consumers for `hall.booking` and `hall.quotation`
 
 ### v1.2.0 (2025-10-30)
 - **BREAKING CHANGES**: Migrated from Prisma to Mongoose for MongoDB
