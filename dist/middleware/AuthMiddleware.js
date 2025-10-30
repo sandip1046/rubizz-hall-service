@@ -7,7 +7,7 @@ exports.AuthMiddleware = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const config_1 = require("@/config/config");
 const logger_1 = require("@/utils/logger");
-const RedisConnection_1 = require("@/database/RedisConnection");
+const RedisService_1 = require("@/services/RedisService");
 class AuthMiddleware {
     static async verifyToken(req, res, next) {
         try {
@@ -22,7 +22,7 @@ class AuthMiddleware {
                 return;
             }
             const token = authHeader.substring(7);
-            const isBlacklisted = await RedisConnection_1.redis.exists(`blacklist:${token}`);
+            const isBlacklisted = await AuthMiddleware.redisService.exists(`blacklist:${token}`);
             if (isBlacklisted) {
                 const response = {
                     success: false,
@@ -34,7 +34,7 @@ class AuthMiddleware {
             }
             const decoded = jsonwebtoken_1.default.verify(token, config_1.config.jwt.secret);
             const sessionKey = `session:${decoded.id}`;
-            const sessionData = await RedisConnection_1.redis.get(sessionKey);
+            const sessionData = await AuthMiddleware.redisService.getCache(sessionKey);
             if (!sessionData) {
                 const response = {
                     success: false,
@@ -44,7 +44,7 @@ class AuthMiddleware {
                 res.status(401).json(response);
                 return;
             }
-            const session = JSON.parse(sessionData);
+            const session = sessionData;
             if (session.token !== token) {
                 const response = {
                     success: false,
@@ -60,7 +60,7 @@ class AuthMiddleware {
                 role: decoded.role,
                 permissions: decoded.permissions || [],
             };
-            await RedisConnection_1.redis.expire(sessionKey, 24 * 60 * 60);
+            await AuthMiddleware.redisService.expire(sessionKey, 24 * 60 * 60);
             next();
         }
         catch (error) {
@@ -237,12 +237,12 @@ class AuthMiddleware {
                 if (tokenExpiry && tokenExpiry.exp) {
                     const ttl = tokenExpiry.exp - Math.floor(Date.now() / 1000);
                     if (ttl > 0) {
-                        await RedisConnection_1.redis.set(`blacklist:${token}`, 'true', ttl);
+                        await AuthMiddleware.redisService.setCache(`blacklist:${token}`, 'true', ttl);
                     }
                 }
                 if (req.user) {
                     const sessionKey = `session:${req.user.id}`;
-                    await RedisConnection_1.redis.del(sessionKey);
+                    await AuthMiddleware.redisService.deleteCache(sessionKey);
                 }
             }
             next();
@@ -254,5 +254,6 @@ class AuthMiddleware {
     }
 }
 exports.AuthMiddleware = AuthMiddleware;
+AuthMiddleware.redisService = new RedisService_1.RedisService();
 exports.default = AuthMiddleware;
 //# sourceMappingURL=AuthMiddleware.js.map

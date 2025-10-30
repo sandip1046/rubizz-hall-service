@@ -11,7 +11,7 @@ const compression_1 = __importDefault(require("compression"));
 const config_1 = require("@/config/config");
 const logger_1 = require("@/utils/logger");
 const DatabaseConnection_1 = require("@/database/DatabaseConnection");
-const RedisConnection_1 = require("@/database/RedisConnection");
+const RedisService_1 = require("@/services/RedisService");
 const ErrorHandler_1 = require("@/middleware/ErrorHandler");
 const RateLimitMiddleware_1 = require("@/middleware/RateLimitMiddleware");
 const HealthController_1 = require("@/controllers/HealthController");
@@ -21,6 +21,7 @@ const QuotationController_1 = require("@/controllers/QuotationController");
 class HallService {
     constructor() {
         this.app = (0, express_1.default)();
+        this.redisService = new RedisService_1.RedisService();
         this.setupMiddleware();
         this.setupRoutes();
         this.setupErrorHandling();
@@ -106,8 +107,8 @@ class HallService {
         try {
             await DatabaseConnection_1.database.connect();
             logger_1.logger.info('Database connected successfully');
-            await RedisConnection_1.redis.connect();
-            logger_1.logger.info('Redis connected successfully');
+            await this.redisService.connect();
+            logger_1.logger.info('Redis service connected successfully');
             this.server = this.app.listen(config_1.config.server.port, () => {
                 logger_1.logger.info(`Hall Management Service started`, {
                     port: config_1.config.server.port,
@@ -132,8 +133,8 @@ class HallService {
                     try {
                         await DatabaseConnection_1.database.disconnect();
                         logger_1.logger.info('Database disconnected');
-                        await RedisConnection_1.redis.disconnect();
-                        logger_1.logger.info('Redis disconnected');
+                        await this.redisService.disconnect();
+                        logger_1.logger.info('Redis service disconnected');
                         logger_1.logger.info('Graceful shutdown completed');
                         process.exit(0);
                     }

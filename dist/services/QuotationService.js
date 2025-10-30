@@ -1,8 +1,11 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.QuotationService = void 0;
-const DatabaseConnection_1 = require("@/database/DatabaseConnection");
-const RedisConnection_1 = require("@/database/RedisConnection");
+const mongoose_1 = __importDefault(require("mongoose"));
+const RedisService_1 = require("@/services/RedisService");
 const logger_1 = require("@/utils/logger");
 const types_1 = require("@/types");
 const validators_1 = require("@/utils/validators");
@@ -11,11 +14,14 @@ const ErrorHandler_1 = require("@/middleware/ErrorHandler");
 const costCalculator_1 = require("@/utils/costCalculator");
 const HallService_1 = require("./HallService");
 const BookingService_1 = require("./BookingService");
+const Hall_1 = __importDefault(require("@/models/Hall"));
+const HallQuotation_1 = __importDefault(require("@/models/HallQuotation"));
+const HallLineItem_1 = __importDefault(require("@/models/HallLineItem"));
 class QuotationService {
     constructor() {
-        this.prisma = DatabaseConnection_1.database.getPrisma();
         this.hallService = new HallService_1.HallService();
         this.bookingService = new BookingService_1.BookingService();
+        this.redisService = new RedisService_1.RedisService();
     }
     async createQuotation(data) {
         try {
@@ -23,9 +29,7 @@ class QuotationService {
             if (!validation.isValid) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest(validation.errors.join(', '));
             }
-            const hall = await this.prisma.hall.findUnique({
-                where: { id: data.hallId },
-            });
+            const hall = await Hall_1.default.findById(data.hallId).lean();
             if (!hall) {
                 throw ErrorHandler_1.ErrorHandler.NotFound('Hall not found');
             }
@@ -42,46 +46,43 @@ class QuotationService {
             const validUntil = data.validUntil
                 ? new Date(data.validUntil)
                 : helpers_1.Helpers.addDays(new Date(), 7);
-            const quotation = await this.prisma.hallQuotation.create({
-                data: {
-                    hallId: data.hallId,
-                    customerId: data.customerId,
-                    customerName: 'Customer',
-                    customerEmail: 'customer@example.com',
-                    customerPhone: '+1234567890',
-                    quotationNumber,
-                    eventName: data.eventName,
-                    eventType: data.eventType,
-                    eventDate: new Date(data.eventDate),
-                    startTime: data.startTime,
-                    endTime: data.endTime,
-                    guestCount: data.guestCount,
-                    baseAmount: costResult.baseAmount,
-                    subtotal: costResult.subtotal,
-                    taxAmount: costResult.taxAmount,
-                    totalAmount: costResult.totalAmount,
-                    validUntil,
-                    status: types_1.QuotationStatus.DRAFT,
-                },
+            const createdDoc = await HallQuotation_1.default.create({
+                hallId: data.hallId,
+                customerId: data.customerId,
+                customerName: 'Customer',
+                customerEmail: 'customer@example.com',
+                customerPhone: '+1234567890',
+                quotationNumber,
+                eventName: data.eventName,
+                eventType: data.eventType,
+                eventDate: new Date(data.eventDate),
+                startTime: data.startTime,
+                endTime: data.endTime,
+                guestCount: data.guestCount,
+                baseAmount: costResult.baseAmount,
+                subtotal: costResult.subtotal,
+                taxAmount: costResult.taxAmount,
+                totalAmount: costResult.totalAmount,
+                validUntil,
+                status: types_1.QuotationStatus.DRAFT,
             });
-            const lineItems = await Promise.all(costResult.lineItems.map(item => this.prisma.hallLineItem.create({
-                data: {
-                    hallId: data.hallId,
-                    quotationId: quotation.id,
-                    itemType: item.itemType,
-                    itemName: item.itemName,
-                    description: item.description,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                    totalPrice: item.totalPrice,
-                },
+            const quotation = await HallQuotation_1.default.findById(createdDoc._id).lean();
+            await Promise.all(costResult.lineItems.map(item => HallLineItem_1.default.create({
+                hallId: data.hallId,
+                quotationId: createdDoc._id,
+                itemType: item.itemType,
+                itemName: item.itemName,
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                totalPrice: item.totalPrice,
             })));
             await this.clearQuotationCache();
             logger_1.logger.info('Quotation created successfully', {
-                quotationId: quotation.id,
-                quotationNumber: quotation.quotationNumber,
-                hallId: quotation.hallId,
-                customerId: quotation.customerId
+                quotationId: createdDoc._id?.toString?.(),
+                quotationNumber: quotation?.quotationNumber,
+                hallId: quotation?.hallId,
+                customerId: quotation?.customerId
             });
             return { ...quotation, lineItems: [], acceptedAt: null };
         }
@@ -92,23 +93,17 @@ class QuotationService {
     }
     async getQuotationById(id) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid quotation ID format');
             }
             const cacheKey = `quotation:${id}`;
-            const cachedQuotation = await RedisConnection_1.redis.get(cacheKey);
+            const cachedQuotation = await this.redisService.getCache(cacheKey);
             if (cachedQuotation) {
-                return JSON.parse(cachedQuotation);
+                return cachedQuotation;
             }
-            const quotation = await this.prisma.hallQuotation.findUnique({
-                where: { id },
-                include: {
-                    hall: true,
-                    lineItems: true,
-                },
-            });
+            const quotation = await HallQuotation_1.default.findById(id).lean();
             if (quotation) {
-                await RedisConnection_1.redis.set(cacheKey, JSON.stringify(quotation), 1800);
+                await this.redisService.setCache(cacheKey, quotation, 1800);
             }
             return { ...quotation, lineItems: [], acceptedAt: null };
         }
@@ -119,13 +114,7 @@ class QuotationService {
     }
     async getQuotationByNumber(quotationNumber) {
         try {
-            const quotation = await this.prisma.hallQuotation.findUnique({
-                where: { quotationNumber },
-                include: {
-                    hall: true,
-                    lineItems: true,
-                },
-            });
+            const quotation = await HallQuotation_1.default.findOne({ quotationNumber }).lean();
             return { ...quotation, lineItems: [], acceptedAt: null };
         }
         catch (error) {
@@ -165,25 +154,16 @@ class QuotationService {
                     lte: new Date(filters.validUntil),
                 };
             }
-            const orderBy = {};
+            const sort = {};
             if (pagination?.sortBy) {
-                orderBy[pagination.sortBy] = pagination.sortOrder || 'desc';
+                sort[pagination.sortBy] = pagination.sortOrder === 'asc' ? 1 : -1;
             }
             else {
-                orderBy.createdAt = 'desc';
+                sort.createdAt = -1;
             }
             const [quotations, total] = await Promise.all([
-                this.prisma.hallQuotation.findMany({
-                    where,
-                    skip,
-                    take: limit,
-                    orderBy,
-                    include: {
-                        hall: true,
-                        lineItems: true,
-                    },
-                }),
-                this.prisma.hallQuotation.count({ where }),
+                HallQuotation_1.default.find(where).skip(skip).limit(limit).sort(sort).lean(),
+                HallQuotation_1.default.countDocuments(where),
             ]);
             const paginationMeta = helpers_1.Helpers.generatePaginationMetadata(page, limit, total);
             return {
@@ -198,15 +178,13 @@ class QuotationService {
     }
     async updateQuotation(id, data) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid quotation ID format');
             }
             if (data.eventDate && new Date(data.eventDate) < new Date()) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Event date cannot be in the past');
             }
-            const existingQuotation = await this.prisma.hallQuotation.findUnique({
-                where: { id },
-            });
+            const existingQuotation = await HallQuotation_1.default.findById(id).lean();
             if (!existingQuotation) {
                 throw ErrorHandler_1.ErrorHandler.NotFound('Quotation not found');
             }
@@ -220,7 +198,7 @@ class QuotationService {
             if (data.lineItems && data.lineItems.length > 0) {
                 const costEventDate = (data.eventDate ?? (existingQuotation.eventDate?.toISOString().split('T')[0] ?? new Date().toISOString().split('T')[0]));
                 const costCalculation = {
-                    hallId: existingQuotation.hallId,
+                    hallId: String(existingQuotation.hallId),
                     eventDate: costEventDate,
                     startTime: data.startTime || existingQuotation.startTime,
                     endTime: data.endTime || existingQuotation.endTime,
@@ -235,33 +213,23 @@ class QuotationService {
                 };
             }
             const { lineItems, ...updateData } = updatedData;
-            const updatedQuotation = await this.prisma.hallQuotation.update({
-                where: { id },
-                data: helpers_1.Helpers.removeUndefinedValues(updateData),
-                include: {
-                    hall: true,
-                    lineItems: true,
-                },
-            });
+            await HallQuotation_1.default.updateOne({ _id: id }, helpers_1.Helpers.removeUndefinedValues(updateData));
+            const updatedQuotation = await HallQuotation_1.default.findById(id).lean();
             if (data.lineItems && data.lineItems.length > 0) {
-                await this.prisma.hallLineItem.deleteMany({
-                    where: { quotationId: id },
-                });
-                await Promise.all(data.lineItems.map(item => this.prisma.hallLineItem.create({
-                    data: {
-                        hallId: existingQuotation.hallId,
-                        quotationId: id,
-                        itemType: item.itemType,
-                        itemName: item.itemName,
-                        description: item.description,
-                        quantity: item.quantity,
-                        unitPrice: item.unitPrice,
-                        totalPrice: item.quantity * item.unitPrice,
-                    },
+                await HallLineItem_1.default.deleteMany({ quotationId: new mongoose_1.default.Types.ObjectId(id) });
+                await Promise.all(data.lineItems.map(item => HallLineItem_1.default.create({
+                    hallId: String(existingQuotation.hallId),
+                    quotationId: new mongoose_1.default.Types.ObjectId(id),
+                    itemType: item.itemType,
+                    itemName: item.itemName,
+                    description: item.description,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    totalPrice: item.quantity * item.unitPrice,
                 })));
             }
             await this.clearQuotationCache();
-            await RedisConnection_1.redis.del(`quotation:${id}`);
+            await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation updated successfully', { quotationId: id });
             return updatedQuotation;
         }
@@ -272,12 +240,10 @@ class QuotationService {
     }
     async acceptQuotation(id) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid quotation ID format');
             }
-            const existingQuotation = await this.prisma.hallQuotation.findUnique({
-                where: { id },
-            });
+            const existingQuotation = await HallQuotation_1.default.findById(id).lean();
             if (!existingQuotation) {
                 throw ErrorHandler_1.ErrorHandler.NotFound('Quotation not found');
             }
@@ -291,25 +257,19 @@ class QuotationService {
                 throw ErrorHandler_1.ErrorHandler.Conflict('Only sent quotations can be accepted');
             }
             const availabilityEventDate = (existingQuotation.eventDate?.toISOString().split('T')[0] ?? new Date().toISOString().split('T')[0]);
-            const isAvailable = await this.hallService.checkHallAvailability(existingQuotation.hallId, availabilityEventDate, existingQuotation.startTime, existingQuotation.endTime);
+            const isAvailable = await this.hallService.checkHallAvailability(String(existingQuotation.hallId), availabilityEventDate, existingQuotation.startTime, existingQuotation.endTime);
             if (!isAvailable) {
                 throw ErrorHandler_1.ErrorHandler.Conflict('Hall is no longer available for the selected date and time');
             }
-            const updatedQuotation = await this.prisma.hallQuotation.update({
-                where: { id },
-                data: {
-                    isAccepted: true,
-                    status: types_1.QuotationStatus.ACCEPTED,
-                    acceptedAt: new Date(),
-                },
-                include: {
-                    hall: true,
-                    lineItems: true,
-                },
+            await HallQuotation_1.default.updateOne({ _id: id }, {
+                isAccepted: true,
+                status: types_1.QuotationStatus.ACCEPTED,
+                acceptedAt: new Date(),
             });
+            const updatedQuotation = await HallQuotation_1.default.findById(id).lean();
             const bookingEventDate = (existingQuotation.eventDate?.toISOString().split('T')[0] ?? new Date().toISOString().split('T')[0]);
             const booking = await this.bookingService.createBooking({
-                hallId: existingQuotation.hallId,
+                hallId: String(existingQuotation.hallId),
                 customerId: existingQuotation.customerId,
                 eventName: existingQuotation.eventName,
                 eventType: existingQuotation.eventType,
@@ -322,7 +282,7 @@ class QuotationService {
                 quotationId: id,
             });
             await this.clearQuotationCache();
-            await RedisConnection_1.redis.del(`quotation:${id}`);
+            await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation accepted successfully', {
                 quotationId: id,
                 bookingId: booking.id
@@ -336,12 +296,10 @@ class QuotationService {
     }
     async rejectQuotation(id) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid quotation ID format');
             }
-            const existingQuotation = await this.prisma.hallQuotation.findUnique({
-                where: { id },
-            });
+            const existingQuotation = await HallQuotation_1.default.findById(id).lean();
             if (!existingQuotation) {
                 throw ErrorHandler_1.ErrorHandler.NotFound('Quotation not found');
             }
@@ -351,18 +309,10 @@ class QuotationService {
             if (existingQuotation.isExpired) {
                 throw ErrorHandler_1.ErrorHandler.Conflict('Cannot reject expired quotation');
             }
-            const updatedQuotation = await this.prisma.hallQuotation.update({
-                where: { id },
-                data: {
-                    status: types_1.QuotationStatus.REJECTED,
-                },
-                include: {
-                    hall: true,
-                    lineItems: true,
-                },
-            });
+            await HallQuotation_1.default.updateOne({ _id: id }, { status: types_1.QuotationStatus.REJECTED });
+            const updatedQuotation = await HallQuotation_1.default.findById(id).lean();
             await this.clearQuotationCache();
-            await RedisConnection_1.redis.del(`quotation:${id}`);
+            await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation rejected successfully', { quotationId: id });
             return updatedQuotation;
         }
@@ -373,12 +323,10 @@ class QuotationService {
     }
     async expireQuotation(id) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid quotation ID format');
             }
-            const existingQuotation = await this.prisma.hallQuotation.findUnique({
-                where: { id },
-            });
+            const existingQuotation = await HallQuotation_1.default.findById(id).lean();
             if (!existingQuotation) {
                 throw ErrorHandler_1.ErrorHandler.NotFound('Quotation not found');
             }
@@ -388,19 +336,10 @@ class QuotationService {
             if (existingQuotation.isExpired) {
                 throw ErrorHandler_1.ErrorHandler.Conflict('Quotation is already expired');
             }
-            const updatedQuotation = await this.prisma.hallQuotation.update({
-                where: { id },
-                data: {
-                    isExpired: true,
-                    status: types_1.QuotationStatus.EXPIRED,
-                },
-                include: {
-                    hall: true,
-                    lineItems: true,
-                },
-            });
+            await HallQuotation_1.default.updateOne({ _id: id }, { isExpired: true, status: types_1.QuotationStatus.EXPIRED });
+            const updatedQuotation = await HallQuotation_1.default.findById(id).lean();
             await this.clearQuotationCache();
-            await RedisConnection_1.redis.del(`quotation:${id}`);
+            await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation expired successfully', { quotationId: id });
             return updatedQuotation;
         }
@@ -411,12 +350,10 @@ class QuotationService {
     }
     async sendQuotation(id) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid quotation ID format');
             }
-            const existingQuotation = await this.prisma.hallQuotation.findUnique({
-                where: { id },
-            });
+            const existingQuotation = await HallQuotation_1.default.findById(id).lean();
             if (!existingQuotation) {
                 throw ErrorHandler_1.ErrorHandler.NotFound('Quotation not found');
             }
@@ -426,18 +363,10 @@ class QuotationService {
             if (existingQuotation.isExpired) {
                 throw ErrorHandler_1.ErrorHandler.Conflict('Cannot send expired quotation');
             }
-            const updatedQuotation = await this.prisma.hallQuotation.update({
-                where: { id },
-                data: {
-                    status: types_1.QuotationStatus.SENT,
-                },
-                include: {
-                    hall: true,
-                    lineItems: true,
-                },
-            });
+            await HallQuotation_1.default.updateOne({ _id: id }, { status: types_1.QuotationStatus.SENT });
+            const updatedQuotation = await HallQuotation_1.default.findById(id).lean();
             await this.clearQuotationCache();
-            await RedisConnection_1.redis.del(`quotation:${id}`);
+            await this.redisService.deleteCache(`quotation:${id}`);
             logger_1.logger.info('Quotation sent successfully', { quotationId: id });
             return updatedQuotation;
         }
@@ -479,31 +408,21 @@ class QuotationService {
                     lte: new Date(filters.endDate),
                 };
             }
-            const [totalQuotations, draftQuotations, sentQuotations, acceptedQuotations, rejectedQuotations, expiredQuotations, totalValue, averageValue,] = await Promise.all([
-                this.prisma.hallQuotation.count({ where }),
-                this.prisma.hallQuotation.count({
-                    where: { ...where, status: types_1.QuotationStatus.DRAFT },
-                }),
-                this.prisma.hallQuotation.count({
-                    where: { ...where, status: types_1.QuotationStatus.SENT },
-                }),
-                this.prisma.hallQuotation.count({
-                    where: { ...where, status: types_1.QuotationStatus.ACCEPTED },
-                }),
-                this.prisma.hallQuotation.count({
-                    where: { ...where, status: types_1.QuotationStatus.REJECTED },
-                }),
-                this.prisma.hallQuotation.count({
-                    where: { ...where, status: types_1.QuotationStatus.EXPIRED },
-                }),
-                this.prisma.hallQuotation.aggregate({
-                    where: { ...where, status: types_1.QuotationStatus.ACCEPTED },
-                    _sum: { totalAmount: true },
-                }),
-                this.prisma.hallQuotation.aggregate({
-                    where: { ...where, status: types_1.QuotationStatus.ACCEPTED },
-                    _avg: { totalAmount: true },
-                }),
+            const [totalQuotations, draftQuotations, sentQuotations, acceptedQuotations, rejectedQuotations, expiredQuotations, totalValueAgg, averageValueAgg,] = await Promise.all([
+                HallQuotation_1.default.countDocuments(where),
+                HallQuotation_1.default.countDocuments({ ...where, status: types_1.QuotationStatus.DRAFT }),
+                HallQuotation_1.default.countDocuments({ ...where, status: types_1.QuotationStatus.SENT }),
+                HallQuotation_1.default.countDocuments({ ...where, status: types_1.QuotationStatus.ACCEPTED }),
+                HallQuotation_1.default.countDocuments({ ...where, status: types_1.QuotationStatus.REJECTED }),
+                HallQuotation_1.default.countDocuments({ ...where, status: types_1.QuotationStatus.EXPIRED }),
+                HallQuotation_1.default.aggregate([
+                    { $match: { ...where, status: types_1.QuotationStatus.ACCEPTED } },
+                    { $group: { _id: null, totalAmount: { $sum: '$totalAmount' } } },
+                ]),
+                HallQuotation_1.default.aggregate([
+                    { $match: { ...where, status: types_1.QuotationStatus.ACCEPTED } },
+                    { $group: { _id: null, avgAmount: { $avg: '$totalAmount' } } },
+                ]),
             ]);
             return {
                 totalQuotations,
@@ -512,8 +431,8 @@ class QuotationService {
                 acceptedQuotations,
                 rejectedQuotations,
                 expiredQuotations,
-                totalValue: totalValue._sum.totalAmount || 0,
-                averageValue: averageValue._avg.totalAmount || 0,
+                totalValue: totalValueAgg[0]?.totalAmount || 0,
+                averageValue: averageValueAgg[0]?.avgAmount || 0,
                 acceptanceRate: totalQuotations > 0 ? (acceptedQuotations / totalQuotations) * 100 : 0,
                 rejectionRate: totalQuotations > 0 ? (rejectedQuotations / totalQuotations) * 100 : 0,
                 expirationRate: totalQuotations > 0 ? (expiredQuotations / totalQuotations) * 100 : 0,
@@ -526,11 +445,7 @@ class QuotationService {
     }
     async clearQuotationCache() {
         try {
-            const pattern = 'quotation:*';
-            const keys = await RedisConnection_1.redis.getClient().keys(pattern);
-            if (keys.length > 0) {
-                await RedisConnection_1.redis.getClient().del(keys);
-            }
+            logger_1.logger.info('Quotation cache clear requested - pattern-based deletion not supported in RedisService');
         }
         catch (error) {
             logger_1.logger.error('Failed to clear quotation cache:', error);

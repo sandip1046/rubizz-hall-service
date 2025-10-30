@@ -12,6 +12,7 @@ declare global {
     }
 }
 export declare class AuthMiddleware {
+    private static redisService;
     static verifyToken(req: Request, res: Response, next: NextFunction): Promise<void>;
     static requireRole(roles: string | string[]): (req: Request, res: Response, next: NextFunction) => void;
     static requirePermission(permissions: string | string[]): (req: Request, res: Response, next: NextFunction) => void;

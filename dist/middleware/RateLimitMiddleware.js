@@ -6,12 +6,13 @@ var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RateLimitMiddleware = void 0;
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
-const RedisConnection_1 = require("@/database/RedisConnection");
+const RedisService_1 = require("@/services/RedisService");
 const logger_1 = require("@/utils/logger");
 const config_1 = require("@/config/config");
 class RedisStore {
     constructor(prefix = 'rate_limit:') {
         this.prefix = prefix;
+        this.redisService = new RedisService_1.RedisService();
     }
     getKey(key) {
         return `${this.prefix}${key}`;
@@ -21,26 +22,41 @@ class RedisStore {
         const now = Date.now();
         const window = Math.floor(now / windowMs);
         const windowKey = `${redisKey}:${window}`;
-        const totalHits = await RedisConnection_1.redis.getCacheClient().incr(windowKey);
-        if (totalHits === 1) {
-            await RedisConnection_1.redis.getCacheClient().expire(windowKey, Math.ceil(windowMs / 1000));
+        try {
+            const currentValue = await this.redisService.getCache(windowKey);
+            const totalHits = currentValue ? parseInt(currentValue) + 1 : 1;
+            await this.redisService.setCache(windowKey, totalHits.toString(), Math.ceil(windowMs / 1000));
+            const resetTime = new Date((window + 1) * windowMs);
+            return { totalHits, resetTime };
         }
-        const resetTime = new Date((window + 1) * windowMs);
-        return { totalHits, resetTime };
+        catch (error) {
+            logger_1.logger.error('Rate limit increment error:', error);
+            return { totalHits: 1, resetTime: new Date(Date.now() + windowMs) };
+        }
     }
     async decrement(key) {
         const redisKey = this.getKey(key);
         const now = Date.now();
         const window = Math.floor(now / config_1.config.rateLimit.windowMs);
         const windowKey = `${redisKey}:${window}`;
-        await RedisConnection_1.redis.getCacheClient().decr(windowKey);
+        try {
+            const currentValue = await this.redisService.getCache(windowKey);
+            if (currentValue) {
+                const newValue = Math.max(0, parseInt(currentValue) - 1);
+                await this.redisService.setCache(windowKey, newValue.toString(), Math.ceil(config_1.config.rateLimit.windowMs / 1000));
+            }
+        }
+        catch (error) {
+            logger_1.logger.error('Rate limit decrement error:', error);
+        }
     }
     async resetKey(key) {
         const redisKey = this.getKey(key);
-        const pattern = `${redisKey}:*`;
-        const keys = await RedisConnection_1.redis.getCacheClient().keys(pattern);
-        if (keys.length > 0) {
-            await RedisConnection_1.redis.getCacheClient().del(keys);
+        try {
+            logger_1.logger.info('Rate limit reset requested - pattern-based deletion not supported in RedisService');
+        }
+        catch (error) {
+            logger_1.logger.error('Rate limit reset error:', error);
         }
     }
 }

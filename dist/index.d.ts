@@ -2,6 +2,7 @@ import express from 'express';
 declare class HallService {
     private app;
     private server;
+    private redisService;
     constructor();
     private setupMiddleware;
     private setupRoutes;

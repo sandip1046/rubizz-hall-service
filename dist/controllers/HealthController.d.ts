@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 export declare class HealthController {
+    private static redisService;
     static health(req: Request, res: Response): Promise<void>;
     static healthDetailed(req: Request, res: Response): Promise<void>;
     static ready(req: Request, res: Response): Promise<void>;

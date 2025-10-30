@@ -8,32 +8,11 @@ export declare const config: {
     database: {
         url: any;
     };
-    redisSession: {
+    redisService: {
         url: any;
-        host: any;
-        port: any;
-        password: any;
-        username: any;
-        tls: any;
-        db: any;
-    };
-    redisCache: {
-        url: any;
-        host: any;
-        port: any;
-        password: any;
-        username: any;
-        tls: any;
-        db: any;
-    };
-    redisQueue: {
-        url: any;
-        host: any;
-        port: any;
-        password: any;
-        username: any;
-        tls: any;
-        db: any;
+        timeout: number;
+        retries: number;
+        retryDelay: number;
     };
     jwt: {
         secret: any;

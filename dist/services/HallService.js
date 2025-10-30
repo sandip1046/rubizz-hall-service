@@ -1,15 +1,21 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HallService = void 0;
-const DatabaseConnection_1 = require("@/database/DatabaseConnection");
-const RedisConnection_1 = require("@/database/RedisConnection");
+const mongoose_1 = __importDefault(require("mongoose"));
+const RedisService_1 = require("@/services/RedisService");
 const logger_1 = require("@/utils/logger");
 const validators_1 = require("@/utils/validators");
 const helpers_1 = require("@/utils/helpers");
 const ErrorHandler_1 = require("@/middleware/ErrorHandler");
+const Hall_1 = __importDefault(require("@/models/Hall"));
+const HallBooking_1 = __importDefault(require("@/models/HallBooking"));
+const HallAvailability_1 = __importDefault(require("@/models/HallAvailability"));
 class HallService {
     constructor() {
-        this.prisma = DatabaseConnection_1.database.getPrisma();
+        this.redisService = new RedisService_1.RedisService();
     }
     async createHall(data) {
         try {
@@ -17,31 +23,28 @@ class HallService {
             if (!validation.isValid) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest(validation.errors.join(', '));
             }
-            const existingHall = await this.prisma.hall.findFirst({
-                where: { name: data.name },
-            });
+            const existingHall = await Hall_1.default.findOne({ name: data.name }).lean();
             if (existingHall) {
                 throw ErrorHandler_1.ErrorHandler.Conflict('Hall with this name already exists');
             }
-            const hall = await this.prisma.hall.create({
-                data: {
-                    name: data.name,
-                    description: data.description || null,
-                    capacity: data.capacity,
-                    area: data.area || 0,
-                    location: data.location,
-                    amenities: data.amenities || [],
-                    baseRate: data.baseRate,
-                    hourlyRate: data.hourlyRate || null,
-                    dailyRate: data.dailyRate || null,
-                    weekendRate: data.weekendRate || null,
-                    images: data.images || [],
-                    floorPlan: data.floorPlan || null,
-                },
+            const hall = await Hall_1.default.create({
+                name: data.name,
+                description: data.description || null,
+                capacity: data.capacity,
+                area: data.area || 0,
+                location: data.location,
+                amenities: data.amenities || [],
+                baseRate: data.baseRate,
+                hourlyRate: data.hourlyRate || null,
+                dailyRate: data.dailyRate || null,
+                weekendRate: data.weekendRate || null,
+                images: data.images || [],
+                floorPlan: data.floorPlan || null,
             });
             await this.clearHallCache();
-            logger_1.logger.info('Hall created successfully', { hallId: hall.id, name: hall.name });
-            return hall;
+            const created = await Hall_1.default.findById(hall._id).lean();
+            logger_1.logger.info('Hall created successfully', { hallId: hall._id?.toString?.(), name: created?.name });
+            return created;
         }
         catch (error) {
             logger_1.logger.error('Failed to create hall:', error);
@@ -50,19 +53,17 @@ class HallService {
     }
     async getHallById(id) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid hall ID format');
             }
             const cacheKey = `hall:${id}`;
-            const cachedHall = await RedisConnection_1.redis.get(cacheKey);
+            const cachedHall = await this.redisService.getCache(cacheKey);
             if (cachedHall) {
-                return JSON.parse(cachedHall);
+                return cachedHall;
             }
-            const hall = await this.prisma.hall.findUnique({
-                where: { id },
-            });
+            const hall = await Hall_1.default.findById(id).lean();
             if (hall) {
-                await RedisConnection_1.redis.set(cacheKey, JSON.stringify(hall), 3600);
+                await this.redisService.setCache(cacheKey, hall, 3600);
             }
             return hall;
         }
@@ -124,21 +125,16 @@ class HallService {
             }
             if (filters?.date && filters?.startTime && filters?.endTime) {
             }
-            const orderBy = {};
+            const sort = {};
             if (pagination?.sortBy) {
-                orderBy[pagination.sortBy] = pagination.sortOrder || 'desc';
+                sort[pagination.sortBy] = pagination.sortOrder === 'asc' ? 1 : -1;
             }
             else {
-                orderBy.createdAt = 'desc';
+                sort.createdAt = -1;
             }
             const [halls, total] = await Promise.all([
-                this.prisma.hall.findMany({
-                    where,
-                    skip,
-                    take: limit,
-                    orderBy,
-                }),
-                this.prisma.hall.count({ where }),
+                Hall_1.default.find(where).skip(skip).limit(limit).sort(sort).lean(),
+                Hall_1.default.countDocuments(where),
             ]);
             const paginationMeta = helpers_1.Helpers.generatePaginationMetadata(page, limit, total);
             return {
@@ -153,33 +149,30 @@ class HallService {
     }
     async updateHall(id, data) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid hall ID format');
             }
             const validation = validators_1.Validators.validateUpdateHall(data);
             if (!validation.isValid) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest(validation.errors.join(', '));
             }
-            const existingHall = await this.prisma.hall.findUnique({
-                where: { id },
-            });
+            const existingHall = await Hall_1.default.findById(id).lean();
             if (!existingHall) {
                 throw ErrorHandler_1.ErrorHandler.NotFound('Hall not found');
             }
             if (data.name && data.name !== existingHall.name) {
-                const nameExists = await this.prisma.hall.findFirst({
-                    where: { name: data.name },
-                });
+                const nameExists = await Hall_1.default.findOne({ name: data.name }).lean();
                 if (nameExists) {
                     throw ErrorHandler_1.ErrorHandler.Conflict('Hall with this name already exists');
                 }
             }
-            const updatedHall = await this.prisma.hall.update({
-                where: { id },
-                data: helpers_1.Helpers.removeUndefinedValues(data),
-            });
+            await Hall_1.default.updateOne({ _id: id }, helpers_1.Helpers.removeUndefinedValues(data));
+            const updatedHall = await Hall_1.default.findById(id).lean();
+            if (!updatedHall) {
+                throw ErrorHandler_1.ErrorHandler.createError('Failed to update hall', 500, 'InternalServerError');
+            }
             await this.clearHallCache();
-            await RedisConnection_1.redis.del(`hall:${id}`);
+            await this.redisService.deleteCache(`hall:${id}`);
             logger_1.logger.info('Hall updated successfully', { hallId: id, name: updatedHall.name });
             return updatedHall;
         }
@@ -190,32 +183,24 @@ class HallService {
     }
     async deleteHall(id) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid hall ID format');
             }
-            const existingHall = await this.prisma.hall.findUnique({
-                where: { id },
-                include: {
-                    bookings: true,
-                    quotations: true,
-                },
-            });
+            const existingHall = await Hall_1.default.findById(id).lean();
             if (!existingHall) {
                 throw ErrorHandler_1.ErrorHandler.NotFound('Hall not found');
             }
-            const activeBookings = existingHall.bookings.filter(booking => !booking.isCancelled && booking.status !== 'COMPLETED');
+            const activeBookings = await HallBooking_1.default.find({ hallId: id, isCancelled: false, status: { $ne: 'COMPLETED' } }).limit(1).lean();
             if (activeBookings.length > 0) {
                 throw ErrorHandler_1.ErrorHandler.Conflict('Cannot delete hall with active bookings');
             }
-            const pendingQuotations = existingHall.quotations.filter(quotation => quotation.status === 'DRAFT' || quotation.status === 'SENT');
-            if (pendingQuotations.length > 0) {
+            const pendingQuotationsCount = await mongoose_1.default.model('HallQuotation').countDocuments({ hallId: id, status: { $in: ['DRAFT', 'SENT'] } });
+            if (pendingQuotationsCount > 0) {
                 throw ErrorHandler_1.ErrorHandler.Conflict('Cannot delete hall with pending quotations');
             }
-            await this.prisma.hall.delete({
-                where: { id },
-            });
+            await Hall_1.default.deleteOne({ _id: id });
             await this.clearHallCache();
-            await RedisConnection_1.redis.del(`hall:${id}`);
+            await this.redisService.deleteCache(`hall:${id}`);
             logger_1.logger.info('Hall deleted successfully', { hallId: id, name: existingHall.name });
             return true;
         }
@@ -226,30 +211,20 @@ class HallService {
     }
     async checkHallAvailability(hallId, date, startTime, endTime) {
         try {
-            if (!validators_1.Validators.isValidUUID(hallId)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(hallId)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid hall ID format');
             }
-            const hall = await this.prisma.hall.findUnique({
-                where: { id: hallId },
-            });
+            const hall = await Hall_1.default.findById(hallId).lean();
             if (!hall || !hall.isActive || !hall.isAvailable) {
                 return false;
             }
-            const conflictingBooking = await this.prisma.hallBooking.findFirst({
-                where: {
-                    hallId,
-                    startDate: {
-                        lte: new Date(date),
-                    },
-                    endDate: {
-                        gte: new Date(date),
-                    },
-                    isCancelled: false,
-                    status: {
-                        not: 'CANCELLED',
-                    },
-                },
-            });
+            const conflictingBooking = await HallBooking_1.default.findOne({
+                hallId,
+                startDate: { $lte: new Date(date) },
+                endDate: { $gte: new Date(date) },
+                isCancelled: false,
+                status: { $ne: 'CANCELLED' },
+            }).lean();
             if (conflictingBooking) {
                 const bookingStartTime = conflictingBooking.startTime;
                 const bookingEndTime = conflictingBooking.endTime;
@@ -257,19 +232,13 @@ class HallService {
                     return false;
                 }
             }
-            const blockedAvailability = await this.prisma.hallAvailability.findFirst({
-                where: {
-                    hallId,
-                    date: new Date(date),
-                    startTime: {
-                        lte: startTime,
-                    },
-                    endTime: {
-                        gte: endTime,
-                    },
-                    isAvailable: false,
-                },
-            });
+            const blockedAvailability = await HallAvailability_1.default.findOne({
+                hallId,
+                date: new Date(date),
+                startTime: { $lte: startTime },
+                endTime: { $gte: endTime },
+                isAvailable: false,
+            }).lean();
             if (blockedAvailability) {
                 return false;
             }
@@ -282,43 +251,23 @@ class HallService {
     }
     async getHallWithRelations(id) {
         try {
-            if (!validators_1.Validators.isValidUUID(id)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid hall ID format');
             }
-            const hall = await this.prisma.hall.findUnique({
-                where: { id },
-                include: {
-                    bookings: {
-                        where: {
-                            isCancelled: false,
-                        },
-                        orderBy: {
-                            startDate: 'desc',
-                        },
-                        take: 10,
-                    },
-                    quotations: {
-                        where: {
-                            status: {
-                                in: ['DRAFT', 'SENT', 'ACCEPTED'],
-                            },
-                        },
-                        orderBy: {
-                            createdAt: 'desc',
-                        },
-                        take: 10,
-                        include: {
-                            lineItems: true,
-                        },
-                    },
-                    lineItems: {
-                        orderBy: {
-                            createdAt: 'desc',
-                        },
-                        take: 20,
-                    },
-                },
-            });
+            const hallCore = await Hall_1.default.findById(id).lean();
+            if (!hallCore)
+                return null;
+            const [bookings, quotations, lineItems] = await Promise.all([
+                HallBooking_1.default.find({ hallId: id, isCancelled: false }).sort({ startDate: -1 }).limit(10).lean(),
+                mongoose_1.default.model('HallQuotation').find({ hallId: id, status: { $in: ['DRAFT', 'SENT', 'ACCEPTED'] } }).sort({ createdAt: -1 }).limit(10).lean(),
+                mongoose_1.default.model('HallLineItem').find({ hallId: id }).sort({ createdAt: -1 }).limit(20).lean(),
+            ]);
+            const hall = {
+                ...hallCore,
+                bookings,
+                quotations,
+                lineItems,
+            };
             return hall;
         }
         catch (error) {
@@ -332,43 +281,25 @@ class HallService {
             const limit = pagination?.limit || 10;
             const skip = (page - 1) * limit;
             const where = {
-                OR: [
+                $and: [
                     {
-                        name: {
-                            contains: query,
-                            mode: 'insensitive',
-                        },
+                        $or: [
+                            { name: { $regex: query, $options: 'i' } },
+                            { location: { $regex: query, $options: 'i' } },
+                            { description: { $regex: query, $options: 'i' } },
+                        ],
                     },
-                    {
-                        location: {
-                            contains: query,
-                            mode: 'insensitive',
-                        },
-                    },
-                    {
-                        description: {
-                            contains: query,
-                            mode: 'insensitive',
-                        },
-                    },
+                    { isActive: true },
+                    { isAvailable: true },
                 ],
-                isActive: true,
-                isAvailable: true,
             };
             const [halls, total] = await Promise.all([
-                this.prisma.hall.findMany({
-                    where,
-                    skip,
-                    take: limit,
-                    orderBy: {
-                        name: 'asc',
-                    },
-                }),
-                this.prisma.hall.count({ where }),
+                Hall_1.default.find(where).skip(skip).limit(limit).sort({ name: 1 }).lean(),
+                Hall_1.default.countDocuments(where),
             ]);
             const paginationMeta = helpers_1.Helpers.generatePaginationMetadata(page, limit, total);
             return {
-                data: halls,
+                data: halls.map((h) => ({ ...h, id: h._id?.toString?.() })),
                 pagination: paginationMeta,
             };
         }
@@ -379,43 +310,29 @@ class HallService {
     }
     async getHallStatistics(hallId) {
         try {
-            if (!validators_1.Validators.isValidUUID(hallId)) {
+            if (!mongoose_1.default.Types.ObjectId.isValid(hallId)) {
                 throw ErrorHandler_1.ErrorHandler.BadRequest('Invalid hall ID format');
             }
-            const [totalBookings, completedBookings, cancelledBookings, totalRevenue, averageBookingValue, lastBooking,] = await Promise.all([
-                this.prisma.hallBooking.count({
-                    where: { hallId },
-                }),
-                this.prisma.hallBooking.count({
-                    where: { hallId, status: 'COMPLETED' },
-                }),
-                this.prisma.hallBooking.count({
-                    where: { hallId, isCancelled: true },
-                }),
-                this.prisma.hallBooking.aggregate({
-                    where: { hallId, status: 'COMPLETED' },
-                    _sum: { totalAmount: true },
-                }),
-                this.prisma.hallBooking.aggregate({
-                    where: { hallId, status: 'COMPLETED' },
-                    _avg: { totalAmount: true },
-                }),
-                this.prisma.hallBooking.findFirst({
-                    where: { hallId },
-                    orderBy: { createdAt: 'desc' },
-                    select: {
-                        eventName: true,
-                        startDate: true,
-                        totalAmount: true,
-                    },
-                }),
+            const [totalBookings, completedBookings, cancelledBookings, totalRevenueAgg, averageBookingAgg, lastBooking] = await Promise.all([
+                HallBooking_1.default.countDocuments({ hallId }),
+                HallBooking_1.default.countDocuments({ hallId, status: 'COMPLETED' }),
+                HallBooking_1.default.countDocuments({ hallId, isCancelled: true }),
+                HallBooking_1.default.aggregate([
+                    { $match: { hallId: new mongoose_1.default.Types.ObjectId(hallId), status: 'COMPLETED' } },
+                    { $group: { _id: null, totalAmount: { $sum: '$totalAmount' } } },
+                ]),
+                HallBooking_1.default.aggregate([
+                    { $match: { hallId: new mongoose_1.default.Types.ObjectId(hallId), status: 'COMPLETED' } },
+                    { $group: { _id: null, avgAmount: { $avg: '$totalAmount' } } },
+                ]),
+                HallBooking_1.default.findOne({ hallId }).sort({ createdAt: -1 }).select({ eventName: 1, startDate: 1, totalAmount: 1 }).lean(),
             ]);
             return {
                 totalBookings,
                 completedBookings,
                 cancelledBookings,
-                totalRevenue: totalRevenue._sum.totalAmount || 0,
-                averageBookingValue: averageBookingValue._avg.totalAmount || 0,
+                totalRevenue: totalRevenueAgg[0]?.totalAmount || 0,
+                averageBookingValue: averageBookingAgg[0]?.avgAmount || 0,
                 lastBooking,
                 utilizationRate: totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0,
             };
@@ -434,11 +351,7 @@ class HallService {
     }
     async clearHallCache() {
         try {
-            const pattern = 'hall:*';
-            const keys = await RedisConnection_1.redis.getClient().keys(pattern);
-            if (keys.length > 0) {
-                await RedisConnection_1.redis.getClient().del(keys);
-            }
+            logger_1.logger.info('Hall cache clear requested - pattern-based deletion not supported in RedisService');
         }
         catch (error) {
             logger_1.logger.error('Failed to clear hall cache:', error);

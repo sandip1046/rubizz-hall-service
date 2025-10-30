@@ -1,5 +1,66 @@
-import { EventType, BookingStatus, PaymentStatus, PaymentMode, PaymentType, QuotationStatus, LineItemType } from '@prisma/client';
-export { EventType, BookingStatus, PaymentStatus, PaymentMode, PaymentType, QuotationStatus, LineItemType };
+export declare enum EventType {
+    WEDDING = "WEDDING",
+    CORPORATE = "CORPORATE",
+    BIRTHDAY = "BIRTHDAY",
+    ANNIVERSARY = "ANNIVERSARY",
+    CONFERENCE = "CONFERENCE",
+    SEMINAR = "SEMINAR",
+    PARTY = "PARTY",
+    MEETING = "MEETING",
+    OTHER = "OTHER"
+}
+export declare enum BookingStatus {
+    PENDING = "PENDING",
+    CONFIRMED = "CONFIRMED",
+    CHECKED_IN = "CHECKED_IN",
+    COMPLETED = "COMPLETED",
+    CANCELLED = "CANCELLED",
+    NO_SHOW = "NO_SHOW"
+}
+export declare enum PaymentStatus {
+    PENDING = "PENDING",
+    PROCESSING = "PROCESSING",
+    COMPLETED = "COMPLETED",
+    FAILED = "FAILED",
+    REFUNDED = "REFUNDED",
+    PARTIALLY_REFUNDED = "PARTIALLY_REFUNDED"
+}
+export declare enum PaymentMode {
+    CASH = "CASH",
+    CARD = "CARD",
+    UPI = "UPI",
+    NET_BANKING = "NET_BANKING",
+    WALLET = "WALLET",
+    CHEQUE = "CHEQUE",
+    BANK_TRANSFER = "BANK_TRANSFER"
+}
+export declare enum PaymentType {
+    DEPOSIT = "DEPOSIT",
+    ADVANCE = "ADVANCE",
+    FULL_PAYMENT = "FULL_PAYMENT",
+    REFUND = "REFUND"
+}
+export declare enum QuotationStatus {
+    DRAFT = "DRAFT",
+    SENT = "SENT",
+    ACCEPTED = "ACCEPTED",
+    REJECTED = "REJECTED",
+    EXPIRED = "EXPIRED"
+}
+export declare enum LineItemType {
+    HALL_RENTAL = "HALL_RENTAL",
+    CHAIR = "CHAIR",
+    TABLE = "TABLE",
+    DECORATION = "DECORATION",
+    LIGHTING = "LIGHTING",
+    AV_EQUIPMENT = "AV_EQUIPMENT",
+    CATERING = "CATERING",
+    SECURITY = "SECURITY",
+    GENERATOR = "GENERATOR",
+    CLEANING = "CLEANING",
+    PARKING = "PARKING",
+    OTHER = "OTHER"
+}
 export interface BaseEntity {
     id: string;
     createdAt: Date;

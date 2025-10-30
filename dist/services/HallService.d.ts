@@ -1,6 +1,6 @@
 import { Hall, CreateHallRequest, UpdateHallRequest, HallSearchFilters, PaginationParams, PaginatedResponse, HallWithRelations } from '@/types';
 export declare class HallService {
-    private prisma;
+    private redisService;
     constructor();
     createHall(data: CreateHallRequest): Promise<Hall>;
     getHallById(id: string): Promise<Hall | null>;

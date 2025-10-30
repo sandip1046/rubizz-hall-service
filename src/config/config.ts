@@ -15,32 +15,11 @@ const envSchema = Joi.object({
   // Database Configuration
   DATABASE_URL: Joi.string().required(),
 
-  // Redis Configuration - Session Management (Upstash)
-  REDIS_SESSION_URL: Joi.string().required(),
-  REDIS_SESSION_HOST: Joi.string().required(),
-  REDIS_SESSION_PORT: Joi.number().default(6379),
-  REDIS_SESSION_PASSWORD: Joi.string().required(),
-  REDIS_SESSION_USERNAME: Joi.string().default('default'),
-  REDIS_SESSION_TLS: Joi.boolean().default(true),
-  REDIS_SESSION_DB: Joi.number().default(0),
-
-  // Redis Configuration - Caching (Upstash)
-  REDIS_CACHE_URL: Joi.string().required(),
-  REDIS_CACHE_HOST: Joi.string().required(),
-  REDIS_CACHE_PORT: Joi.number().default(6379),
-  REDIS_CACHE_PASSWORD: Joi.string().required(),
-  REDIS_CACHE_USERNAME: Joi.string().default('default'),
-  REDIS_CACHE_TLS: Joi.boolean().default(true),
-  REDIS_CACHE_DB: Joi.number().default(1),
-
-  // Redis Configuration - Message Queues (Upstash)
-  REDIS_QUEUE_URL: Joi.string().required(),
-  REDIS_QUEUE_HOST: Joi.string().required(),
-  REDIS_QUEUE_PORT: Joi.number().default(6379),
-  REDIS_QUEUE_PASSWORD: Joi.string().required(),
-  REDIS_QUEUE_USERNAME: Joi.string().default('default'),
-  REDIS_QUEUE_TLS: Joi.boolean().default(true),
-  REDIS_QUEUE_DB: Joi.number().default(2),
+  // Redis Service Configuration
+  REDIS_SERVICE_URL: Joi.string().uri().default('http://localhost:3000/api/v1/redis'),
+  REDIS_SERVICE_TIMEOUT: Joi.number().default(30000),
+  REDIS_SERVICE_RETRIES: Joi.number().default(3),
+  REDIS_SERVICE_RETRY_DELAY: Joi.number().default(1000),
 
   // JWT Configuration
   JWT_SECRET: Joi.string().min(32).required(),
@@ -135,37 +114,12 @@ export const config = {
     url: env.DATABASE_URL,
   },
 
-  // Redis - Session Management
-  redisSession: {
-    url: env.REDIS_SESSION_URL,
-    host: env.REDIS_SESSION_HOST,
-    port: env.REDIS_SESSION_PORT,
-    password: env.REDIS_SESSION_PASSWORD,
-    username: env.REDIS_SESSION_USERNAME,
-    tls: env.REDIS_SESSION_TLS,
-    db: env.REDIS_SESSION_DB,
-  },
-
-  // Redis - Caching
-  redisCache: {
-    url: env.REDIS_CACHE_URL,
-    host: env.REDIS_CACHE_HOST,
-    port: env.REDIS_CACHE_PORT,
-    password: env.REDIS_CACHE_PASSWORD,
-    username: env.REDIS_CACHE_USERNAME,
-    tls: env.REDIS_CACHE_TLS,
-    db: env.REDIS_CACHE_DB,
-  },
-
-  // Redis - Message Queues
-  redisQueue: {
-    url: env.REDIS_QUEUE_URL,
-    host: env.REDIS_QUEUE_HOST,
-    port: env.REDIS_QUEUE_PORT,
-    password: env.REDIS_QUEUE_PASSWORD,
-    username: env.REDIS_QUEUE_USERNAME,
-    tls: env.REDIS_QUEUE_TLS,
-    db: env.REDIS_QUEUE_DB,
+  // Redis Service Configuration
+  redisService: {
+    url: env.REDIS_SERVICE_URL || 'http://localhost:3000/api/v1/redis',
+    timeout: parseInt(env.REDIS_SERVICE_TIMEOUT || '30000', 10),
+    retries: parseInt(env.REDIS_SERVICE_RETRIES || '3', 10),
+    retryDelay: parseInt(env.REDIS_SERVICE_RETRY_DELAY || '1000', 10),
   },
 
   // JWT

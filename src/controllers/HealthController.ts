@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import { database } from '@/database/DatabaseConnection';
-import { redis } from '@/database/RedisConnection';
+import { RedisService } from '@/services/RedisService';
 import { logger } from '@/utils/logger';
 import { config } from '@/config/config';
 import { ApiResponse } from '@/types';
 
 export class HealthController {
+  private static redisService = new RedisService();
+
   /**
    * Basic health check endpoint
    */
@@ -269,21 +271,17 @@ export class HealthController {
     const startTime = Date.now();
     
     try {
-      const isHealthy = await redis.healthCheck();
+      const healthCheck = await HealthController.redisService.healthCheck();
       const responseTime = Date.now() - startTime;
 
-      if (isHealthy) {
-        // Get Redis version
-        const version = await redis.getClient().info('server');
-        const redisVersion = version.match(/redis_version:([^\r\n]+)/)?.[1];
-
+      if (healthCheck.session && healthCheck.cache && healthCheck.queue) {
         return {
           status: 'healthy',
           responseTime,
-          version: redisVersion || 'Unknown',
+          version: 'Redis Service',
         };
       } else {
-        throw new Error('Redis health check failed');
+        throw new Error('Redis service health check failed');
       }
     } catch (error) {
       const responseTime = Date.now() - startTime;
@@ -373,10 +371,12 @@ export class HealthController {
   private static async isServiceReady(): Promise<boolean> {
     try {
       // Check critical dependencies
-      const [dbHealthy, redisHealthy] = await Promise.all([
+      const [dbHealthy, redisHealthCheck] = await Promise.all([
         database.healthCheck(),
-        redis.healthCheck(),
+        HealthController.redisService.healthCheck(),
       ]);
+
+      const redisHealthy = redisHealthCheck.session && redisHealthCheck.cache && redisHealthCheck.queue;
 
       return dbHealthy && redisHealthy;
     } catch (error) {

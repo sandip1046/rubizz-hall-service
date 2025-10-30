@@ -1,0 +1,42 @@
+import { Document, Model, Types } from 'mongoose';
+export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
+export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'NET_BANKING' | 'WALLET' | 'CHEQUE' | 'BANK_TRANSFER';
+export type EventType = 'WEDDING' | 'CORPORATE' | 'BIRTHDAY' | 'ANNIVERSARY' | 'CONFERENCE' | 'SEMINAR' | 'PARTY' | 'MEETING' | 'OTHER';
+export interface HallBookingDocument extends Document {
+    hallId: Types.ObjectId | string;
+    customerId: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    eventName: string;
+    eventType: EventType;
+    startDate: Date;
+    endDate: Date;
+    startTime: string;
+    endTime: string;
+    duration: number;
+    guestCount: number;
+    baseAmount: number;
+    additionalCharges: number;
+    discount: number;
+    taxAmount: number;
+    totalAmount: number;
+    depositAmount?: number | null;
+    balanceAmount?: number | null;
+    depositPaid: boolean;
+    status: BookingStatus;
+    paymentStatus: PaymentStatus;
+    paymentMode?: PaymentMode | null;
+    isConfirmed: boolean;
+    isCancelled: boolean;
+    cancellationReason?: string | null;
+    confirmedAt?: Date | null;
+    cancelledAt?: Date | null;
+    specialRequests?: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
+export declare const HallBookingModel: Model<HallBookingDocument>;
+export default HallBookingModel;
+//# sourceMappingURL=HallBooking.d.ts.map

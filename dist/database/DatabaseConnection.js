@@ -1,37 +1,15 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.database = void 0;
-const client_1 = require("@prisma/client");
+const mongoose_1 = __importDefault(require("mongoose"));
 const config_1 = require("@/config/config");
 const logger_1 = require("@/utils/logger");
 class DatabaseConnection {
     constructor() {
-        this.prisma = new client_1.PrismaClient({
-            datasources: {
-                db: {
-                    url: config_1.config.database.url,
-                },
-            },
-            log: [
-                {
-                    emit: 'event',
-                    level: 'query',
-                },
-                {
-                    emit: 'event',
-                    level: 'error',
-                },
-                {
-                    emit: 'event',
-                    level: 'info',
-                },
-                {
-                    emit: 'event',
-                    level: 'warn',
-                },
-            ],
-        });
-        this.setupLogging();
+        this.isConnected = false;
     }
     static getInstance() {
         if (!DatabaseConnection.instance) {
@@ -39,20 +17,18 @@ class DatabaseConnection {
         }
         return DatabaseConnection.instance;
     }
-    getPrisma() {
-        return this.prisma;
-    }
-    setupLogging() {
-        if (config_1.config.server.nodeEnv === 'development') {
-            logger_1.logger.debug('Database logging disabled for MongoDB');
-        }
-    }
     async connect() {
         try {
-            await this.prisma.$connect();
+            if (this.isConnected)
+                return;
+            await mongoose_1.default.connect(config_1.config.database.url, {
+                autoIndex: true,
+                serverSelectionTimeoutMS: 30000,
+            });
+            this.isConnected = true;
             logger_1.logger.info('Database connected successfully', {
                 service: config_1.config.server.serviceName,
-                database: 'MongoDB',
+                database: 'MongoDB (Mongoose)',
             });
         }
         catch (error) {
@@ -62,7 +38,10 @@ class DatabaseConnection {
     }
     async disconnect() {
         try {
-            await this.prisma.$disconnect();
+            if (!this.isConnected)
+                return;
+            await mongoose_1.default.disconnect();
+            this.isConnected = false;
             logger_1.logger.info('Database disconnected successfully', {
                 service: config_1.config.server.serviceName,
             });
@@ -74,16 +53,13 @@ class DatabaseConnection {
     }
     async healthCheck() {
         try {
-            await this.prisma.hall.findFirst();
-            return true;
+            const state = mongoose_1.default.connection.readyState;
+            return state === 1;
         }
         catch (error) {
             logger_1.logger.error('Database health check failed:', error);
             return false;
         }
-    }
-    async transaction(fn) {
-        return await fn(this.prisma);
     }
 }
 exports.database = DatabaseConnection.getInstance();

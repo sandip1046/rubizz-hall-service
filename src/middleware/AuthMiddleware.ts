@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '@/config/config';
 import { logger } from '@/utils/logger';
-import { redis } from '@/database/RedisConnection';
+import { RedisService } from '@/services/RedisService';
 import { ApiResponse } from '@/types';
 
 // Extend Request interface to include user
@@ -29,6 +29,8 @@ interface JwtPayload {
 }
 
 export class AuthMiddleware {
+  private static redisService = new RedisService();
+
   /**
    * Verify JWT token and extract user information
    */
@@ -49,7 +51,7 @@ export class AuthMiddleware {
       const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
       // Check if token is blacklisted
-      const isBlacklisted = await redis.exists(`blacklist:${token}`);
+      const isBlacklisted = await AuthMiddleware.redisService.exists(`blacklist:${token}`);
       if (isBlacklisted) {
         const response: ApiResponse = {
           success: false,
@@ -65,7 +67,7 @@ export class AuthMiddleware {
       
       // Check if user session exists in Redis
       const sessionKey = `session:${decoded.id}`;
-      const sessionData = await redis.get(sessionKey);
+      const sessionData = await AuthMiddleware.redisService.getCache(sessionKey);
       
       if (!sessionData) {
         const response: ApiResponse = {
@@ -78,7 +80,7 @@ export class AuthMiddleware {
       }
 
       // Parse session data
-      const session = JSON.parse(sessionData);
+      const session = sessionData;
       
       // Check if token matches session token
       if (session.token !== token) {
@@ -100,7 +102,7 @@ export class AuthMiddleware {
       };
 
       // Update last activity
-      await redis.expire(sessionKey, 24 * 60 * 60); // 24 hours
+      await AuthMiddleware.redisService.expire(sessionKey, 24 * 60 * 60); // 24 hours
 
       next();
     } catch (error) {
@@ -333,14 +335,14 @@ export class AuthMiddleware {
         if (tokenExpiry && tokenExpiry.exp) {
           const ttl = tokenExpiry.exp - Math.floor(Date.now() / 1000);
           if (ttl > 0) {
-            await redis.set(`blacklist:${token}`, 'true', ttl);
+            await AuthMiddleware.redisService.setCache(`blacklist:${token}`, 'true', ttl);
           }
         }
 
         // Remove session
         if (req.user) {
           const sessionKey = `session:${req.user.id}`;
-          await redis.del(sessionKey);
+          await AuthMiddleware.redisService.deleteCache(sessionKey);
         }
       }
 

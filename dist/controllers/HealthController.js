@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HealthController = void 0;
 const DatabaseConnection_1 = require("@/database/DatabaseConnection");
-const RedisConnection_1 = require("@/database/RedisConnection");
+const RedisService_1 = require("@/services/RedisService");
 const logger_1 = require("@/utils/logger");
 const config_1 = require("@/config/config");
 class HealthController {
@@ -217,19 +217,17 @@ class HealthController {
     static async checkRedis() {
         const startTime = Date.now();
         try {
-            const isHealthy = await RedisConnection_1.redis.healthCheck();
+            const healthCheck = await HealthController.redisService.healthCheck();
             const responseTime = Date.now() - startTime;
-            if (isHealthy) {
-                const version = await RedisConnection_1.redis.getClient().info('server');
-                const redisVersion = version.match(/redis_version:([^\r\n]+)/)?.[1];
+            if (healthCheck.session && healthCheck.cache && healthCheck.queue) {
                 return {
                     status: 'healthy',
                     responseTime,
-                    version: redisVersion || 'Unknown',
+                    version: 'Redis Service',
                 };
             }
             else {
-                throw new Error('Redis health check failed');
+                throw new Error('Redis service health check failed');
             }
         }
         catch (error) {
@@ -302,10 +300,11 @@ class HealthController {
     }
     static async isServiceReady() {
         try {
-            const [dbHealthy, redisHealthy] = await Promise.all([
+            const [dbHealthy, redisHealthCheck] = await Promise.all([
                 DatabaseConnection_1.database.healthCheck(),
-                RedisConnection_1.redis.healthCheck(),
+                HealthController.redisService.healthCheck(),
             ]);
+            const redisHealthy = redisHealthCheck.session && redisHealthCheck.cache && redisHealthCheck.queue;
             return dbHealthy && redisHealthy;
         }
         catch (error) {
@@ -315,5 +314,6 @@ class HealthController {
     }
 }
 exports.HealthController = HealthController;
+HealthController.redisService = new RedisService_1.RedisService();
 exports.default = HealthController;
 //# sourceMappingURL=HealthController.js.map

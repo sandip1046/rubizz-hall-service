@@ -44,7 +44,7 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
 ### Technology Stack
 - **Runtime**: Node.js 18+ with TypeScript
 - **Framework**: Express.js
-- **Database**: MongoDB with Prisma ORM
+- **Database**: MongoDB with Mongoose ODM
 - **Cache**: Multiple Redis instances (Session, Cache, Queue) with ioredis
 - **Email**: Nodemailer with SMTP and Brevo support
 - **Authentication**: JWT with role-based access control
@@ -102,16 +102,8 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
    ```
 
 4. **Database Setup**
-   ```bash
-   # Generate Prisma client
-   npm run prisma:generate
-   
-   # Push schema to database
-   npm run prisma:push
-   
-   # (Optional) Open Prisma Studio
-   npm run prisma:studio
-   ```
+   - Ensure `DATABASE_URL` in `.env` points to your MongoDB Atlas connection string.
+   - Collections are created automatically by Mongoose on first write.
 
 5. **Test Configuration**
    ```bash
@@ -242,7 +234,7 @@ The **Hall Management Service** is a microservice within the Rubizz Hotel Inn ec
 | `TAX_PERCENTAGE` | Tax percentage | 18 |
 | `DEPOSIT_PERCENTAGE` | Deposit percentage | 20 |
 
-## 🗄️ Database Schema (MongoDB with Prisma)
+## 🗄️ Database Schema (MongoDB with Mongoose)
 
 ### Core Models
 
@@ -560,7 +552,7 @@ src/
 ├── config/         # Configuration management
 ├── controllers/    # Request handlers
 ├── middleware/     # Express middleware
-├── models/         # Prisma models (auto-generated)
+├── models/         # Mongoose models and schemas
 ├── services/       # Business logic (including EmailService)
 ├── types/          # TypeScript types
 ├── utils/          # Utility functions
@@ -649,16 +641,16 @@ For support and questions:
 
 ## 🔄 Changelog
 
+### v1.2.0 (2025-10-30)
+- **BREAKING CHANGES**: Migrated from Prisma to Mongoose for MongoDB
+- **NEW**: Introduced Mongoose models for Halls, Bookings, Quotations, Line Items, Payments, Availability
+- **IMPROVED**: Simplified setup (no Prisma generate/push)
+- **IMPROVED**: Performance and flexibility for document operations
+
 ### v1.1.0 (2024-01-08)
-- **BREAKING CHANGES**: Updated Redis configuration to support multiple instances
-- **NEW**: Added EmailService with dual provider support (SMTP + Brevo)
-- **NEW**: Enhanced Redis connection with ioredis for better performance
-- **NEW**: Prisma ORM with MongoDB for better type safety
-- **NEW**: Comprehensive Prisma schema for hall management
-- **NEW**: Configuration test script for validation
-- **IMPROVED**: Better error handling and logging
-- **IMPROVED**: Enhanced health checks for all dependencies
-- **IMPROVED**: Updated package.json with Prisma dependencies
+- Updated Redis configuration to support multiple instances
+- Added EmailService with dual provider support (SMTP + Brevo)
+- Enhanced Redis connection with ioredis for better performance
 
 ### v1.0.0 (2024-01-01)
 - Initial release

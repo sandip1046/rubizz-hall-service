@@ -29,7 +29,22 @@ const consoleFormat = winston.format.combine(
     let log = `${timestamp} [${level}]: ${message}`;
     
     if (Object.keys(meta).length > 0) {
-      log += `\n${JSON.stringify(meta, null, 2)}`;
+      const seen = new WeakSet();
+      const safe = (key: string, value: any) => {
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value)) return '[Circular]';
+          seen.add(value);
+        }
+        if (value instanceof Error) {
+          return { message: value.message, stack: value.stack, name: value.name };
+        }
+        return value;
+      };
+      try {
+        log += `\n${JSON.stringify(meta, safe, 2)}`;
+      } catch {
+        log += `\n[unserializable meta]`;
+      }
     }
     
     return log;

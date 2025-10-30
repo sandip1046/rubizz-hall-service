@@ -1,7 +1,7 @@
 import { HallBooking, CreateBookingRequest, UpdateBookingRequest, BookingSearchFilters, PaginationParams, PaginatedResponse } from '@/types';
 export declare class BookingService {
-    private prisma;
     private hallService;
+    private redisService;
     constructor();
     createBooking(data: CreateBookingRequest): Promise<HallBooking>;
     getBookingById(id: string): Promise<HallBooking | null>;

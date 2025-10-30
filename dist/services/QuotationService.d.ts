@@ -1,8 +1,8 @@
 import { HallQuotation, CreateQuotationRequest, UpdateQuotationRequest, QuotationSearchFilters, PaginationParams, PaginatedResponse, CostCalculationRequest } from '@/types';
 export declare class QuotationService {
-    private prisma;
     private hallService;
     private bookingService;
+    private redisService;
     constructor();
     createQuotation(data: CreateQuotationRequest): Promise<HallQuotation>;
     getQuotationById(id: string): Promise<HallQuotation | null>;

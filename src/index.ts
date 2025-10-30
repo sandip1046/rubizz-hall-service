@@ -6,7 +6,7 @@ import compression from 'compression';
 import { config } from '@/config/config';
 import { logger, morganStream } from '@/utils/logger';
 import { database } from '@/database/DatabaseConnection';
-import { redis } from '@/database/RedisConnection';
+import { RedisService } from '@/services/RedisService';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
 import { RateLimitMiddleware } from '@/middleware/RateLimitMiddleware';
 import { HealthController } from '@/controllers/HealthController';
@@ -19,9 +19,11 @@ import { QuotationController } from '@/controllers/QuotationController';
 class HallService {
   private app: express.Application;
   private server: any;
+  private redisService: RedisService;
 
   constructor() {
     this.app = express();
+    this.redisService = new RedisService();
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
@@ -146,9 +148,9 @@ class HallService {
       await database.connect();
       logger.info('Database connected successfully');
 
-      // Connect to Redis
-      await redis.connect();
-      logger.info('Redis connected successfully');
+      // Connect to Redis Service
+      await this.redisService.connect();
+      logger.info('Redis service connected successfully');
 
       // Start server
       this.server = this.app.listen(config.server.port, () => {
@@ -164,7 +166,7 @@ class HallService {
       this.setupGracefulShutdown();
 
     } catch (error) {
-      logger.error('Failed to start Hall Management Service:', error);
+      logger.error('Failed to start Hall Management Service:', { error: (error as any)?.message, stack: (error as any)?.stack });
       process.exit(1);
     }
   }
@@ -183,9 +185,9 @@ class HallService {
             await database.disconnect();
             logger.info('Database disconnected');
 
-            // Close Redis connection
-            await redis.disconnect();
-            logger.info('Redis disconnected');
+            // Close Redis service connection
+            await this.redisService.disconnect();
+            logger.info('Redis service disconnected');
 
             logger.info('Graceful shutdown completed');
             process.exit(0);
@@ -210,13 +212,13 @@ class HallService {
 
     // Handle uncaught exceptions
     process.on('uncaughtException', (error) => {
-      logger.error('Uncaught Exception:', error);
+      logger.error('Uncaught Exception:', { error: (error as any)?.message, stack: (error as any)?.stack });
       gracefulShutdown('uncaughtException');
     });
 
     // Handle unhandled promise rejections
     process.on('unhandledRejection', (reason, promise) => {
-      logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      logger.error('Unhandled Rejection', { reason: (reason as any)?.message ?? String(reason) });
       gracefulShutdown('unhandledRejection');
     });
   }
@@ -235,7 +237,7 @@ const hallService = new HallService();
 
 // Handle startup errors
 hallService.start().catch((error) => {
-  logger.error('Failed to start service:', error);
+  logger.error('Failed to start service:', { error: (error as any)?.message, stack: (error as any)?.stack });
   process.exit(1);
 });
 
