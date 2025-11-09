@@ -108,32 +108,73 @@ class EmailService {
 
   public async sendBookingConfirmation(
     to: string,
+    customerName: string,
     bookingDetails: {
       type: 'room' | 'table' | 'hall';
       bookingId: string;
       date: string;
       time?: string;
       amount: number;
+      tableNumber?: string;
+      hallName?: string;
+      partySize?: number;
+      eventType?: string;
+      guestCount?: number;
     }
   ): Promise<boolean> {
+    // Determine template based on booking type
+    let templateName: string = '';
+    let variables: Record<string, any> = {
+      customerName,
+      customerEmail: to,
+      bookingNumber: bookingDetails.bookingId,
+      bookingDate: bookingDetails.date,
+      totalAmount: bookingDetails.amount,
+    };
+
     try {
+      if (bookingDetails.type === 'hall') {
+        templateName = 'customer_hall_booking_confirmation';
+        variables = {
+          ...variables,
+          hallName: bookingDetails.hallName || 'Hall',
+          eventDate: bookingDetails.date,
+          eventTime: bookingDetails.time || '',
+          eventType: bookingDetails.eventType || 'Event',
+          guestCount: bookingDetails.guestCount || 0,
+        };
+      } else if (bookingDetails.type === 'table') {
+        templateName = 'customer_table_booking_confirmation';
+        variables = {
+          ...variables,
+          tableNumber: bookingDetails.tableNumber || '',
+          bookingTime: bookingDetails.time || '',
+          partySize: bookingDetails.partySize || 1,
+        };
+      } else {
+        // For room bookings, use the generic hall template (or could use customer_room_booking_confirmation)
+        templateName = 'customer_hall_booking_confirmation';
+        variables = {
+          ...variables,
+          hallName: 'Room',
+          eventDate: bookingDetails.date,
+          eventTime: bookingDetails.time || '',
+          eventType: 'Room Booking',
+          guestCount: bookingDetails.guestCount || 1,
+        };
+      }
+
       const response = await this.mailServiceClient.post('/api/v1/mail/send-template', {
-        templateName: 'hall_booking_confirmation',
+        templateName,
         to,
-        variables: {
-          bookingType: bookingDetails.type.toUpperCase(),
-          bookingId: bookingDetails.bookingId,
-          date: bookingDetails.date,
-          time: bookingDetails.time || '',
-          amount: bookingDetails.amount.toFixed(2),
-          hasTime: bookingDetails.time ? 'true' : 'false',
-        },
+        variables,
       });
 
       if (response.data.success) {
         logger.info('Booking confirmation email sent successfully via mail-service', {
           to,
           bookingId: bookingDetails.bookingId,
+          templateName,
           emailId: response.data.data?.emailId,
         });
         return true;
@@ -141,6 +182,7 @@ class EmailService {
         logger.error('Failed to send booking confirmation email via mail-service', {
           to,
           bookingId: bookingDetails.bookingId,
+          templateName,
           error: response.data.error?.message,
         });
         return false;
@@ -149,6 +191,7 @@ class EmailService {
       logger.error('Error sending booking confirmation email:', error, {
         to,
         bookingId: bookingDetails.bookingId,
+        templateName,
         errorMessage: error.response?.data?.error?.message || error.message,
       });
       return false;
@@ -157,28 +200,61 @@ class EmailService {
 
   public async sendCancellationNotification(
     to: string,
+    customerName: string,
     cancellationDetails: {
       type: 'room' | 'table' | 'hall';
       bookingId: string;
       refundAmount?: number;
+      cancellationReason?: string;
+      tableNumber?: string;
+      hallName?: string;
+      roomNumber?: string;
     }
   ): Promise<boolean> {
+    // Determine template based on cancellation type
+    let templateName: string = '';
+    let variables: Record<string, any> = {
+      customerName,
+      customerEmail: to,
+      bookingNumber: cancellationDetails.bookingId,
+      cancellationReason: cancellationDetails.cancellationReason || 'Customer request',
+      refundAmount: cancellationDetails.refundAmount || 0,
+      hasRefund: cancellationDetails.refundAmount ? 'true' : 'false',
+    };
+
     try {
+      if (cancellationDetails.type === 'hall') {
+        templateName = 'customer_hall_booking_cancellation';
+        variables = {
+          ...variables,
+          hallName: cancellationDetails.hallName || 'Hall',
+        };
+      } else if (cancellationDetails.type === 'table') {
+        templateName = 'customer_table_booking_cancellation';
+        variables = {
+          ...variables,
+          tableNumber: cancellationDetails.tableNumber || '',
+        };
+      } else {
+        // For room cancellations
+        templateName = 'customer_room_booking_cancellation';
+        variables = {
+          ...variables,
+          roomNumber: cancellationDetails.roomNumber || '',
+        };
+      }
+
       const response = await this.mailServiceClient.post('/api/v1/mail/send-template', {
-        templateName: 'hall_booking_cancellation',
+        templateName,
         to,
-        variables: {
-          bookingType: cancellationDetails.type.toUpperCase(),
-          bookingId: cancellationDetails.bookingId,
-          refundAmount: cancellationDetails.refundAmount?.toFixed(2) || '0',
-          hasRefund: cancellationDetails.refundAmount ? 'true' : 'false',
-        },
+        variables,
       });
 
       if (response.data.success) {
         logger.info('Cancellation notification email sent successfully via mail-service', {
           to,
           bookingId: cancellationDetails.bookingId,
+          templateName,
           emailId: response.data.data?.emailId,
         });
         return true;
@@ -186,6 +262,7 @@ class EmailService {
         logger.error('Failed to send cancellation notification email via mail-service', {
           to,
           bookingId: cancellationDetails.bookingId,
+          templateName,
           error: response.data.error?.message,
         });
         return false;
@@ -194,6 +271,7 @@ class EmailService {
       logger.error('Error sending cancellation notification email:', error, {
         to,
         bookingId: cancellationDetails.bookingId,
+        templateName,
         errorMessage: error.response?.data?.error?.message || error.message,
       });
       return false;
