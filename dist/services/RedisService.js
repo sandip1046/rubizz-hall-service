@@ -41,7 +41,16 @@ class RedisService {
     }
     async setSession(sessionId, data, ttl = 3600) {
         try {
-            return await this.setCache(`session:${sessionId}`, data, ttl);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'session',
+                operation: {
+                    operation: 'set',
+                    key: `session:${sessionId}`,
+                    value: JSON.stringify(data),
+                    ttl
+                }
+            });
+            return response.success;
         }
         catch (error) {
             logger_1.logger.error('Failed to set session:', { error: error?.message });
@@ -50,7 +59,17 @@ class RedisService {
     }
     async getSession(sessionId) {
         try {
-            return await this.getCache(`session:${sessionId}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'session',
+                operation: {
+                    operation: 'get',
+                    key: `session:${sessionId}`
+                }
+            });
+            if (response.success && response.data) {
+                return JSON.parse(response.data);
+            }
+            return null;
         }
         catch (error) {
             logger_1.logger.error('Failed to get session:', { error: error?.message });
@@ -59,7 +78,14 @@ class RedisService {
     }
     async deleteSession(sessionId) {
         try {
-            return await this.deleteCache(`session:${sessionId}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'session',
+                operation: {
+                    operation: 'del',
+                    key: `session:${sessionId}`
+                }
+            });
+            return response.success;
         }
         catch (error) {
             logger_1.logger.error('Failed to delete session:', { error: error?.message });
@@ -68,10 +94,14 @@ class RedisService {
     }
     async setCache(key, data, ttl = 3600) {
         try {
-            const response = await this.makeRequest('POST', '/cache', {
-                key: `cache:${key}`,
-                value: JSON.stringify(data),
-                ttl
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'set',
+                    key: `cache:${key}`,
+                    value: JSON.stringify(data),
+                    ttl
+                }
             });
             return response.success;
         }
@@ -82,7 +112,13 @@ class RedisService {
     }
     async getCache(key) {
         try {
-            const response = await this.makeRequest('GET', `/cache/${encodeURIComponent(`cache:${key}`)}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'get',
+                    key: `cache:${key}`
+                }
+            });
             if (response.success && response.data) {
                 return JSON.parse(response.data);
             }
@@ -95,7 +131,13 @@ class RedisService {
     }
     async deleteCache(key) {
         try {
-            const response = await this.makeRequest('DELETE', `/cache/${encodeURIComponent(`cache:${key}`)}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'del',
+                    key: `cache:${key}`
+                }
+            });
             return response.success;
         }
         catch (error) {
@@ -105,11 +147,15 @@ class RedisService {
     }
     async pushToQueue(queueName, data) {
         try {
-            const response = await this.makeRequest('POST', '/queue', {
-                queue: `queue:${queueName}`,
-                value: JSON.stringify(data)
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'queue',
+                operation: {
+                    operation: 'lpush',
+                    key: `queue:${queueName}`,
+                    value: [JSON.stringify(data)]
+                }
             });
-            return response.success ? response.data : 0;
+            return response.success ? (response.data || 0) : 0;
         }
         catch (error) {
             logger_1.logger.error('Failed to push to queue:', { error: error?.message });
@@ -118,7 +164,13 @@ class RedisService {
     }
     async popFromQueue(queueName) {
         try {
-            const response = await this.makeRequest('GET', `/queue/${encodeURIComponent(`queue:${queueName}`)}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'queue',
+                operation: {
+                    operation: 'rpop',
+                    key: `queue:${queueName}`
+                }
+            });
             if (response.success && response.data) {
                 return JSON.parse(response.data);
             }
@@ -131,8 +183,14 @@ class RedisService {
     }
     async getQueueLength(queueName) {
         try {
-            const response = await this.makeRequest('GET', `/queue/${encodeURIComponent(`queue:${queueName}`)}/length`);
-            return response.success ? response.data : 0;
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'queue',
+                operation: {
+                    operation: 'llen',
+                    key: `queue:${queueName}`
+                }
+            });
+            return response.success ? (response.data || 0) : 0;
         }
         catch (error) {
             logger_1.logger.error('Failed to get queue length:', { error: error?.message });
@@ -141,10 +199,14 @@ class RedisService {
     }
     async hset(key, field, value) {
         try {
-            const response = await this.makeRequest('POST', '/hash', {
-                key,
-                field,
-                value: JSON.stringify(value)
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'session',
+                operation: {
+                    operation: 'hset',
+                    key,
+                    field,
+                    value: JSON.stringify(value)
+                }
             });
             return response.success;
         }
@@ -155,7 +217,14 @@ class RedisService {
     }
     async hget(key, field) {
         try {
-            const response = await this.makeRequest('GET', `/hash/${encodeURIComponent(key)}/${encodeURIComponent(field)}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'session',
+                operation: {
+                    operation: 'hget',
+                    key,
+                    field
+                }
+            });
             if (response.success && response.data) {
                 return JSON.parse(response.data);
             }
@@ -168,7 +237,13 @@ class RedisService {
     }
     async hgetall(key) {
         try {
-            const response = await this.makeRequest('GET', `/hash/${encodeURIComponent(key)}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'session',
+                operation: {
+                    operation: 'hgetall',
+                    key
+                }
+            });
             if (response.success && response.data) {
                 const parsed = {};
                 for (const [field, value] of Object.entries(response.data)) {
@@ -185,7 +260,14 @@ class RedisService {
     }
     async hdel(key, field) {
         try {
-            const response = await this.makeRequest('DELETE', `/hash/${encodeURIComponent(key)}/${encodeURIComponent(field)}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'session',
+                operation: {
+                    operation: 'hdel',
+                    key,
+                    field
+                }
+            });
             return response.success;
         }
         catch (error) {
@@ -195,11 +277,15 @@ class RedisService {
     }
     async lpush(key, ...values) {
         try {
-            const response = await this.makeRequest('POST', '/list/lpush', {
-                key,
-                values: values.map(value => JSON.stringify(value))
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'queue',
+                operation: {
+                    operation: 'lpush',
+                    key,
+                    value: values.map(value => JSON.stringify(value))
+                }
             });
-            return response.success ? response.data : 0;
+            return response.success ? (response.data || 0) : 0;
         }
         catch (error) {
             logger_1.logger.error('Failed to lpush:', { error: error?.message });
@@ -208,11 +294,15 @@ class RedisService {
     }
     async rpush(key, ...values) {
         try {
-            const response = await this.makeRequest('POST', '/list/rpush', {
-                key,
-                values: values.map(value => JSON.stringify(value))
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'queue',
+                operation: {
+                    operation: 'lpush',
+                    key,
+                    value: values.map(value => JSON.stringify(value))
+                }
             });
-            return response.success ? response.data : 0;
+            return response.success ? (response.data || 0) : 0;
         }
         catch (error) {
             logger_1.logger.error('Failed to rpush:', { error: error?.message });
@@ -221,7 +311,13 @@ class RedisService {
     }
     async lpop(key) {
         try {
-            const response = await this.makeRequest('GET', `/list/${encodeURIComponent(key)}/lpop`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'queue',
+                operation: {
+                    operation: 'rpop',
+                    key
+                }
+            });
             if (response.success && response.data) {
                 return JSON.parse(response.data);
             }
@@ -234,7 +330,13 @@ class RedisService {
     }
     async rpop(key) {
         try {
-            const response = await this.makeRequest('GET', `/list/${encodeURIComponent(key)}/rpop`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'queue',
+                operation: {
+                    operation: 'rpop',
+                    key
+                }
+            });
             if (response.success && response.data) {
                 return JSON.parse(response.data);
             }
@@ -247,10 +349,13 @@ class RedisService {
     }
     async lrange(key, start, stop) {
         try {
-            const response = await this.makeRequest('GET', `/list/${encodeURIComponent(key)}/range?start=${start}&stop=${stop}`);
-            if (response.success && response.data) {
-                return response.data.map((value) => JSON.parse(value));
-            }
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'queue',
+                operation: {
+                    operation: 'llen',
+                    key
+                }
+            });
             return [];
         }
         catch (error) {
@@ -260,11 +365,15 @@ class RedisService {
     }
     async sadd(key, ...members) {
         try {
-            const response = await this.makeRequest('POST', '/set', {
-                key,
-                members: members.map(member => JSON.stringify(member))
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'sadd',
+                    key,
+                    members: members.map(member => JSON.stringify(member))
+                }
             });
-            return response.success ? response.data : 0;
+            return response.success ? (response.data || 0) : 0;
         }
         catch (error) {
             logger_1.logger.error('Failed to sadd:', { error: error?.message });
@@ -273,7 +382,13 @@ class RedisService {
     }
     async smembers(key) {
         try {
-            const response = await this.makeRequest('GET', `/set/${encodeURIComponent(key)}`);
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'smembers',
+                    key
+                }
+            });
             if (response.success && response.data) {
                 return response.data.map((value) => JSON.parse(value));
             }
@@ -286,11 +401,15 @@ class RedisService {
     }
     async srem(key, ...members) {
         try {
-            const response = await this.makeRequest('DELETE', '/set', {
-                key,
-                members: members.map(member => JSON.stringify(member))
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'srem',
+                    key,
+                    members: members.map(member => JSON.stringify(member))
+                }
             });
-            return response.success ? response.data : 0;
+            return response.success ? (response.data || 0) : 0;
         }
         catch (error) {
             logger_1.logger.error('Failed to srem:', { error: error?.message });
@@ -299,8 +418,15 @@ class RedisService {
     }
     async sismember(key, member) {
         try {
-            const response = await this.makeRequest('GET', `/set/${encodeURIComponent(key)}/ismember?member=${encodeURIComponent(JSON.stringify(member))}`);
-            return response.success ? response.data : false;
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'sismember',
+                    key,
+                    member: JSON.stringify(member)
+                }
+            });
+            return response.success ? (response.data || false) : false;
         }
         catch (error) {
             logger_1.logger.error('Failed to sismember:', { error: error?.message });
@@ -309,8 +435,14 @@ class RedisService {
     }
     async exists(key) {
         try {
-            const response = await this.makeRequest('GET', `/exists/${encodeURIComponent(key)}`);
-            return response.success ? response.data : false;
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'exists',
+                    key
+                }
+            });
+            return response.success ? (response.data || false) : false;
         }
         catch (error) {
             logger_1.logger.error('Failed to check existence:', { error: error?.message });
@@ -319,9 +451,13 @@ class RedisService {
     }
     async expire(key, ttl) {
         try {
-            const response = await this.makeRequest('POST', '/expire', {
-                key,
-                ttl
+            const response = await this.makeRequest('POST', '/execute', {
+                instance: 'cache',
+                operation: {
+                    operation: 'expire',
+                    key,
+                    ttl
+                }
             });
             return response.success;
         }
@@ -332,8 +468,7 @@ class RedisService {
     }
     async ttl(key) {
         try {
-            const response = await this.makeRequest('GET', `/ttl/${encodeURIComponent(key)}`);
-            return response.success ? response.data : -1;
+            return -1;
         }
         catch (error) {
             logger_1.logger.error('Failed to get TTL:', { error: error?.message });
@@ -343,8 +478,8 @@ class RedisService {
     async healthCheck() {
         try {
             const response = await this.makeRequest('GET', '/health');
-            if (response.success && response.data) {
-                return response.data.redis || { session: false, cache: false, queue: false };
+            if (response && response.redis) {
+                return response.redis;
             }
             return { session: false, cache: false, queue: false };
         }
@@ -359,11 +494,16 @@ class RedisService {
             method,
             url,
             timeout: this.timeout,
-            data,
             headers: {
                 'Content-Type': 'application/json',
             },
         };
+        if (method === 'POST' && data) {
+            config.data = data;
+        }
+        else if (method === 'GET' && data) {
+            config.params = data;
+        }
         let lastError;
         for (let attempt = 1; attempt <= this.retries; attempt++) {
             try {
@@ -374,6 +514,9 @@ class RedisService {
                 lastError = error;
                 if (attempt < this.retries) {
                     await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+                }
+                else {
+                    throw error;
                 }
             }
         }

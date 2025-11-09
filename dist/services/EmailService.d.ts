@@ -11,12 +11,10 @@ export interface EmailOptions {
 }
 declare class EmailService {
     private static instance;
-    private smtpTransporter;
-    private brevoTransporter;
+    private mailServiceClient;
     private constructor();
     static getInstance(): EmailService;
-    private setupEventHandlers;
-    sendEmail(options: EmailOptions, useBrevo?: boolean): Promise<boolean>;
+    sendEmail(options: EmailOptions): Promise<boolean>;
     sendWelcomeEmail(to: string, name: string): Promise<boolean>;
     sendBookingConfirmation(to: string, bookingDetails: {
         type: 'room' | 'table' | 'hall';
@@ -32,8 +30,7 @@ declare class EmailService {
     }): Promise<boolean>;
     sendPasswordResetEmail(to: string, resetToken: string): Promise<boolean>;
     sendOTPEmail(to: string, otp: string): Promise<boolean>;
-    verifyConnection(useBrevo?: boolean): Promise<boolean>;
-    closeConnections(): Promise<void>;
+    verifyConnection(): Promise<boolean>;
 }
 export declare const emailService: EmailService;
 export default emailService;

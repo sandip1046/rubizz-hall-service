@@ -29,10 +29,26 @@ export async function startGrpcServer(): Promise<grpc.Server> {
   server.addService(proto.rubizz.hall.HallService.service, {
     GetHall: async (call: any, callback: any) => {
       try {
+        if (!call.request.id) {
+          return callback({
+            code: grpc.status.INVALID_ARGUMENT,
+            message: 'Hall ID is required'
+          });
+        }
         const hall = await hallService.getHallById(call.request.id);
-        callback(null, hall || {});
+        if (!hall) {
+          return callback({
+            code: grpc.status.NOT_FOUND,
+            message: 'Hall not found'
+          });
+        }
+        callback(null, hall);
       } catch (e: any) {
-        callback(e);
+        logger.error('gRPC GetHall error', { error: e?.message, stack: e?.stack });
+        callback({
+          code: grpc.status.INTERNAL,
+          message: e?.message || 'Internal server error'
+        });
       }
     },
     ListHalls: async (call: any, callback: any) => {
@@ -41,7 +57,11 @@ export async function startGrpcServer(): Promise<grpc.Server> {
         const res = await hallService.getHalls({}, { page, limit, sortBy, sortOrder });
         callback(null, { data: res.data, page: res.pagination.page, limit: res.pagination.limit, total: res.pagination.total });
       } catch (e: any) {
-        callback(e);
+        logger.error('gRPC ListHalls error', { error: e?.message, stack: e?.stack });
+        callback({
+          code: grpc.status.INTERNAL,
+          message: e?.message || 'Internal server error'
+        });
       }
     },
     CreateHall: async (call: any, callback: any) => {
@@ -49,15 +69,29 @@ export async function startGrpcServer(): Promise<grpc.Server> {
         const hall = await hallService.createHall(call.request);
         callback(null, hall);
       } catch (e: any) {
-        callback(e);
+        logger.error('gRPC CreateHall error', { error: e?.message, stack: e?.stack });
+        callback({
+          code: grpc.status.INTERNAL,
+          message: e?.message || 'Internal server error'
+        });
       }
     },
     UpdateHall: async (call: any, callback: any) => {
       try {
+        if (!call.request.id) {
+          return callback({
+            code: grpc.status.INVALID_ARGUMENT,
+            message: 'Hall ID is required'
+          });
+        }
         const hall = await hallService.updateHall(call.request.id, call.request);
         callback(null, hall);
       } catch (e: any) {
-        callback(e);
+        logger.error('gRPC UpdateHall error', { error: e?.message, stack: e?.stack });
+        callback({
+          code: grpc.status.INTERNAL,
+          message: e?.message || 'Internal server error'
+        });
       }
     },
   });
@@ -65,10 +99,26 @@ export async function startGrpcServer(): Promise<grpc.Server> {
   server.addService(proto.rubizz.hall.BookingService.service, {
     GetBooking: async (call: any, callback: any) => {
       try {
+        if (!call.request.id) {
+          return callback({
+            code: grpc.status.INVALID_ARGUMENT,
+            message: 'Booking ID is required'
+          });
+        }
         const booking = await bookingService.getBookingById(call.request.id);
-        callback(null, booking || {});
+        if (!booking) {
+          return callback({
+            code: grpc.status.NOT_FOUND,
+            message: 'Booking not found'
+          });
+        }
+        callback(null, booking);
       } catch (e: any) {
-        callback(e);
+        logger.error('gRPC GetBooking error', { error: e?.message, stack: e?.stack });
+        callback({
+          code: grpc.status.INTERNAL,
+          message: e?.message || 'Internal server error'
+        });
       }
     },
     CreateBooking: async (call: any, callback: any) => {
@@ -76,7 +126,11 @@ export async function startGrpcServer(): Promise<grpc.Server> {
         const booking = await bookingService.createBooking(call.request);
         callback(null, booking);
       } catch (e: any) {
-        callback(e);
+        logger.error('gRPC CreateBooking error', { error: e?.message, stack: e?.stack });
+        callback({
+          code: grpc.status.INTERNAL,
+          message: e?.message || 'Internal server error'
+        });
       }
     },
   });
@@ -84,10 +138,26 @@ export async function startGrpcServer(): Promise<grpc.Server> {
   server.addService(proto.rubizz.hall.QuotationService.service, {
     GetQuotation: async (call: any, callback: any) => {
       try {
+        if (!call.request.id) {
+          return callback({
+            code: grpc.status.INVALID_ARGUMENT,
+            message: 'Quotation ID is required'
+          });
+        }
         const quotation = await quotationService.getQuotationById(call.request.id);
-        callback(null, quotation || {});
+        if (!quotation) {
+          return callback({
+            code: grpc.status.NOT_FOUND,
+            message: 'Quotation not found'
+          });
+        }
+        callback(null, quotation);
       } catch (e: any) {
-        callback(e);
+        logger.error('gRPC GetQuotation error', { error: e?.message, stack: e?.stack });
+        callback({
+          code: grpc.status.INTERNAL,
+          message: e?.message || 'Internal server error'
+        });
       }
     },
     CreateQuotation: async (call: any, callback: any) => {
@@ -95,21 +165,36 @@ export async function startGrpcServer(): Promise<grpc.Server> {
         const quotation = await quotationService.createQuotation(call.request);
         callback(null, quotation);
       } catch (e: any) {
-        callback(e);
+        logger.error('gRPC CreateQuotation error', { error: e?.message, stack: e?.stack });
+        callback({
+          code: grpc.status.INTERNAL,
+          message: e?.message || 'Internal server error'
+        });
       }
     },
   });
 
-  const port = (process.env.GRPC_PORT || '50051');
-  const addr = `0.0.0.0:${port}`;
-  await new Promise<void>((resolve, reject) => {
-    server.bindAsync(addr, grpc.ServerCredentials.createInsecure(), (err: any, boundPort: number) => {
-      if (err) return reject(err);
-      logger.info('gRPC server started', { addr: `0.0.0.0:${boundPort}` });
-      resolve();
+  if (config.grpc.enabled) {
+    const port = config.grpc.port;
+    const host = config.grpc.host;
+    const addr = `${host}:${port}`;
+    
+    await new Promise<void>((resolve, reject) => {
+      server.bindAsync(addr, grpc.ServerCredentials.createInsecure(), (err: any, boundPort: number) => {
+        if (err) {
+          logger.error('gRPC server bind failed', { error: err.message, addr });
+          return reject(err);
+        }
+        logger.info('gRPC server started', { addr: `${host}:${boundPort}`, port: boundPort });
+        resolve();
+      });
     });
-  });
-  server.start();
+    
+    server.start();
+  } else {
+    logger.info('gRPC is disabled, skipping server start');
+  }
+  
   return server;
 }
 

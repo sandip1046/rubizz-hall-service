@@ -36,21 +36,7 @@ const envSchema = Joi.object({
   USER_SERVICE_URL: Joi.string().uri().default('http://localhost:3002'),
   CUSTOMER_SERVICE_URL: Joi.string().uri().default('http://localhost:3003'),
   NOTIFICATION_SERVICE_URL: Joi.string().uri().default('http://localhost:3010'),
-
-  // Email Configuration
-  SMTP_HOST: Joi.string().default('smtp.gmail.com'),
-  SMTP_PORT: Joi.number().default(587),
-  SMTP_USER: Joi.string().email().default('your-email@gmail.com'),
-  SMTP_PASS: Joi.string().default('your-app-password'),
-
-  // Brevo SMTP Configuration
-  BREVO_SMTP_HOST: Joi.string().default('smtp-relay.brevo.com'),
-  BREVO_SMTP_PORT: Joi.number().default(587),
-  BREVO_SMTP_USER: Joi.string().email().default('your-email@brevo.com'),
-  BREVO_SMTP_PASS: Joi.string().default('your-brevo-password'),
-
-  FROM_EMAIL: Joi.string().email().default('noreply@rubizzhotel.com'),
-  FROM_NAME: Joi.string().default('Rubizz Hotel Inn'),
+  MAIL_SERVICE_URL: Joi.string().uri().default('http://localhost:3010'),
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: Joi.number().default(900000),
@@ -87,6 +73,33 @@ const envSchema = Joi.object({
   HEALTH_CHECK_INTERVAL: Joi.number().default(30000),
   METRICS_ENABLED: Joi.boolean().default(true),
   TRACING_ENABLED: Joi.boolean().default(true),
+
+  // gRPC Configuration
+  GRPC_ENABLED: Joi.boolean().default(true),
+  GRPC_PORT: Joi.number().default(50051),
+  GRPC_HOST: Joi.string().default('0.0.0.0'),
+  GRPC_TIMEOUT: Joi.number().default(30000),
+  GRPC_RETRIES: Joi.number().default(3),
+  GRPC_RETRY_DELAY: Joi.number().default(1000),
+
+  // Kafka Configuration
+  KAFKA_ENABLED: Joi.boolean().default(true),
+  KAFKA_BROKERS: Joi.string().default('localhost:9092'),
+  KAFKA_CLIENT_ID: Joi.string().default('rubizz-hall-service'),
+  KAFKA_GROUP_ID: Joi.string().default('rubizz-hall-service-group'),
+  KAFKA_RETRY_ATTEMPTS: Joi.number().default(3),
+  KAFKA_RETRY_DELAY: Joi.number().default(1000),
+  KAFKA_SESSION_TIMEOUT: Joi.number().default(30000),
+  KAFKA_HEARTBEAT_INTERVAL: Joi.number().default(3000),
+  KAFKA_TOPICS_EVENTS: Joi.string().default('hall.booking,hall.quotation'),
+  KAFKA_TOPICS_NOTIFICATIONS: Joi.string().default('hall.notifications'),
+
+  // WebSocket Configuration
+  WEBSOCKET_ENABLED: Joi.boolean().default(true),
+  WEBSOCKET_PATH: Joi.string().default('/ws'),
+  WEBSOCKET_PING_INTERVAL: Joi.number().default(30000),
+  WEBSOCKET_PONG_TIMEOUT: Joi.number().default(5000),
+  WEBSOCKET_AUTHENTICATION: Joi.boolean().default(true),
 });
 
 // Validate environment variables
@@ -142,30 +155,7 @@ export const config = {
     user: env.USER_SERVICE_URL,
     customer: env.CUSTOMER_SERVICE_URL,
     notification: env.NOTIFICATION_SERVICE_URL,
-  },
-
-  // Email
-  email: {
-    smtp: {
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT,
-      auth: {
-        user: env.SMTP_USER,
-        pass: env.SMTP_PASS,
-      },
-    },
-    brevo: {
-      host: env.BREVO_SMTP_HOST,
-      port: env.BREVO_SMTP_PORT,
-      auth: {
-        user: env.BREVO_SMTP_USER,
-        pass: env.BREVO_SMTP_PASS,
-      },
-    },
-    from: {
-      email: env.FROM_EMAIL,
-      name: env.FROM_NAME,
-    },
+    mailService: env.MAIL_SERVICE_URL || 'http://localhost:3010',
   },
 
   // Rate Limiting
@@ -214,6 +204,41 @@ export const config = {
     healthCheckInterval: env.HEALTH_CHECK_INTERVAL,
     metricsEnabled: env.METRICS_ENABLED,
     tracingEnabled: env.TRACING_ENABLED,
+  },
+
+  // gRPC Configuration
+  grpc: {
+    enabled: env.GRPC_ENABLED,
+    port: env.GRPC_PORT,
+    host: env.GRPC_HOST,
+    timeout: env.GRPC_TIMEOUT,
+    retries: env.GRPC_RETRIES,
+    retryDelay: env.GRPC_RETRY_DELAY,
+  },
+
+  // Kafka Configuration
+  kafka: {
+    enabled: env.KAFKA_ENABLED,
+    brokers: env.KAFKA_BROKERS.split(',').map((b: string) => b.trim()),
+    clientId: env.KAFKA_CLIENT_ID,
+    groupId: env.KAFKA_GROUP_ID,
+    retryAttempts: env.KAFKA_RETRY_ATTEMPTS,
+    retryDelay: env.KAFKA_RETRY_DELAY,
+    sessionTimeout: env.KAFKA_SESSION_TIMEOUT,
+    heartbeatInterval: env.KAFKA_HEARTBEAT_INTERVAL,
+    topics: {
+      events: env.KAFKA_TOPICS_EVENTS.split(',').map((t: string) => t.trim()),
+      notifications: env.KAFKA_TOPICS_NOTIFICATIONS.split(',').map((t: string) => t.trim()),
+    },
+  },
+
+  // WebSocket Configuration
+  websocket: {
+    enabled: env.WEBSOCKET_ENABLED,
+    path: env.WEBSOCKET_PATH,
+    pingInterval: env.WEBSOCKET_PING_INTERVAL,
+    pongTimeout: env.WEBSOCKET_PONG_TIMEOUT,
+    authentication: env.WEBSOCKET_AUTHENTICATION,
   },
 };
 

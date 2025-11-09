@@ -29,28 +29,7 @@ export declare const config: {
         user: any;
         customer: any;
         notification: any;
-    };
-    email: {
-        smtp: {
-            host: any;
-            port: any;
-            auth: {
-                user: any;
-                pass: any;
-            };
-        };
-        brevo: {
-            host: any;
-            port: any;
-            auth: {
-                user: any;
-                pass: any;
-            };
-        };
-        from: {
-            email: any;
-            name: any;
-        };
+        mailService: any;
     };
     rateLimit: {
         windowMs: any;
@@ -87,6 +66,35 @@ export declare const config: {
         healthCheckInterval: any;
         metricsEnabled: any;
         tracingEnabled: any;
+    };
+    grpc: {
+        enabled: any;
+        port: any;
+        host: any;
+        timeout: any;
+        retries: any;
+        retryDelay: any;
+    };
+    kafka: {
+        enabled: any;
+        brokers: any;
+        clientId: any;
+        groupId: any;
+        retryAttempts: any;
+        retryDelay: any;
+        sessionTimeout: any;
+        heartbeatInterval: any;
+        topics: {
+            events: any;
+            notifications: any;
+        };
+    };
+    websocket: {
+        enabled: any;
+        path: any;
+        pingInterval: any;
+        pongTimeout: any;
+        authentication: any;
     };
 };
 export default config;

@@ -1,4 +1,4 @@
-import nodemailer, { Transporter } from 'nodemailer';
+import axios, { AxiosInstance } from 'axios';
 import { config } from '@/config/config';
 import { logger } from '@/utils/logger';
 
@@ -16,33 +16,16 @@ export interface EmailOptions {
 
 class EmailService {
   private static instance: EmailService;
-  private smtpTransporter: Transporter;
-  private brevoTransporter: Transporter;
+  private mailServiceClient: AxiosInstance;
 
   private constructor() {
-    // Initialize SMTP transporter
-    this.smtpTransporter = nodemailer.createTransport({
-      host: config.email.smtp.host,
-      port: config.email.smtp.port,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: config.email.smtp.auth.user,
-        pass: config.email.smtp.auth.pass,
+    this.mailServiceClient = axios.create({
+      baseURL: config.services.mailService,
+      timeout: 30000,
+      headers: {
+        'Content-Type': 'application/json',
       },
     });
-
-    // Initialize Brevo transporter
-    this.brevoTransporter = nodemailer.createTransport({
-      host: config.email.brevo.host,
-      port: config.email.brevo.port,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: config.email.brevo.auth.user,
-        pass: config.email.brevo.auth.pass,
-      },
-    });
-
-    this.setupEventHandlers();
   }
 
   public static getInstance(): EmailService {
@@ -52,69 +35,75 @@ class EmailService {
     return EmailService.instance;
   }
 
-  private setupEventHandlers(): void {
-    // SMTP transporter event handlers
-    this.smtpTransporter.on('token', (token: any) => {
-      logger.debug('SMTP OAuth2 token generated:', token);
-    });
-
-    // Brevo transporter event handlers
-    this.brevoTransporter.on('token', (token: any) => {
-      logger.debug('Brevo OAuth2 token generated:', token);
-    });
-  }
-
-  public async sendEmail(options: EmailOptions, useBrevo: boolean = true): Promise<boolean> {
-    const transporter = useBrevo ? this.brevoTransporter : this.smtpTransporter;
-    const provider = useBrevo ? 'Brevo' : 'SMTP';
-
+  public async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      const mailOptions = {
-        from: {
-          name: config.email.from.name,
-          address: config.email.from.email,
-        },
-        to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
-        subject: options.subject,
-        text: options.text,
-        html: options.html,
-        attachments: options.attachments,
-      };
+      const recipients = Array.isArray(options.to) ? options.to : [options.to];
 
-      const info = await transporter.sendMail(mailOptions);
-      
-      logger.info('Email sent successfully', {
-        provider,
-        messageId: info.messageId,
-        to: options.to,
-        subject: options.subject,
-      });
+      for (const recipient of recipients) {
+        const response = await this.mailServiceClient.post('/api/v1/mail/send', {
+          to: recipient,
+          subject: options.subject,
+          htmlContent: options.html,
+          textContent: options.text,
+        });
+
+        if (response.data.success) {
+          logger.info('Email sent successfully via mail-service', {
+            emailId: response.data.data?.emailId,
+            to: recipient,
+            subject: options.subject,
+          });
+        } else {
+          logger.error('Failed to send email via mail-service', {
+            to: recipient,
+            subject: options.subject,
+            error: response.data.error?.message,
+          });
+          return false;
+        }
+      }
 
       return true;
-    } catch (error) {
-      logger.error(`Email sending failed via ${provider}:`, error);
+    } catch (error: any) {
+      logger.error('Error sending email via mail-service:', error, {
+        to: options.to,
+        subject: options.subject,
+        errorMessage: error.response?.data?.error?.message || error.message,
+      });
       return false;
     }
   }
 
   public async sendWelcomeEmail(to: string, name: string): Promise<boolean> {
-    const subject = 'Welcome to Rubizz Hotel Inn';
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #cb9c03;">Welcome to Rubizz Hotel Inn!</h2>
-        <p>Dear ${name},</p>
-        <p>Thank you for choosing Rubizz Hotel Inn. We're excited to have you as our guest.</p>
-        <p>You can now book rooms, reserve tables, order food, and book event halls through our platform.</p>
-        <p>If you have any questions, please don't hesitate to contact us.</p>
-        <p>Best regards,<br>Rubizz Hotel Inn Team</p>
-      </div>
-    `;
+    try {
+      const response = await this.mailServiceClient.post('/api/v1/mail/send-template', {
+        templateName: 'hall_welcome',
+        to,
+        variables: {
+          name,
+        },
+      });
 
-    return await this.sendEmail({
-      to,
-      subject,
-      html,
-    });
+      if (response.data.success) {
+        logger.info('Welcome email sent successfully via mail-service', {
+          to,
+          emailId: response.data.data?.emailId,
+        });
+        return true;
+      } else {
+        logger.error('Failed to send welcome email via mail-service', {
+          to,
+          error: response.data.error?.message,
+        });
+        return false;
+      }
+    } catch (error: any) {
+      logger.error('Error sending welcome email:', error, {
+        to,
+        errorMessage: error.response?.data?.error?.message || error.message,
+      });
+      return false;
+    }
   }
 
   public async sendBookingConfirmation(
@@ -127,30 +116,43 @@ class EmailService {
       amount: number;
     }
   ): Promise<boolean> {
-    const subject = `Booking Confirmation - ${bookingDetails.type.toUpperCase()}`;
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #cb9c03;">Booking Confirmation</h2>
-        <p>Dear Customer,</p>
-        <p>Your ${bookingDetails.type} booking has been confirmed!</p>
-        <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0;">
-          <h3>Booking Details:</h3>
-          <p><strong>Booking ID:</strong> ${bookingDetails.bookingId}</p>
-          <p><strong>Type:</strong> ${bookingDetails.type.toUpperCase()}</p>
-          <p><strong>Date:</strong> ${bookingDetails.date}</p>
-          ${bookingDetails.time ? `<p><strong>Time:</strong> ${bookingDetails.time}</p>` : ''}
-          <p><strong>Amount:</strong> ₹${bookingDetails.amount}</p>
-        </div>
-        <p>Thank you for choosing Rubizz Hotel Inn!</p>
-        <p>Best regards,<br>Rubizz Hotel Inn Team</p>
-      </div>
-    `;
+    try {
+      const response = await this.mailServiceClient.post('/api/v1/mail/send-template', {
+        templateName: 'hall_booking_confirmation',
+        to,
+        variables: {
+          bookingType: bookingDetails.type.toUpperCase(),
+          bookingId: bookingDetails.bookingId,
+          date: bookingDetails.date,
+          time: bookingDetails.time || '',
+          amount: bookingDetails.amount.toFixed(2),
+          hasTime: bookingDetails.time ? 'true' : 'false',
+        },
+      });
 
-    return await this.sendEmail({
-      to,
-      subject,
-      html,
-    });
+      if (response.data.success) {
+        logger.info('Booking confirmation email sent successfully via mail-service', {
+          to,
+          bookingId: bookingDetails.bookingId,
+          emailId: response.data.data?.emailId,
+        });
+        return true;
+      } else {
+        logger.error('Failed to send booking confirmation email via mail-service', {
+          to,
+          bookingId: bookingDetails.bookingId,
+          error: response.data.error?.message,
+        });
+        return false;
+      }
+    } catch (error: any) {
+      logger.error('Error sending booking confirmation email:', error, {
+        to,
+        bookingId: bookingDetails.bookingId,
+        errorMessage: error.response?.data?.error?.message || error.message,
+      });
+      return false;
+    }
   }
 
   public async sendCancellationNotification(
@@ -161,103 +163,117 @@ class EmailService {
       refundAmount?: number;
     }
   ): Promise<boolean> {
-    const subject = `Booking Cancelled - ${cancellationDetails.type.toUpperCase()}`;
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #cb9c03;">Booking Cancelled</h2>
-        <p>Dear Customer,</p>
-        <p>Your ${cancellationDetails.type} booking has been cancelled.</p>
-        <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0;">
-          <h3>Cancellation Details:</h3>
-          <p><strong>Booking ID:</strong> ${cancellationDetails.bookingId}</p>
-          <p><strong>Type:</strong> ${cancellationDetails.type.toUpperCase()}</p>
-          ${cancellationDetails.refundAmount ? `<p><strong>Refund Amount:</strong> ₹${cancellationDetails.refundAmount}</p>` : ''}
-        </div>
-        <p>If you have any questions, please contact us.</p>
-        <p>Best regards,<br>Rubizz Hotel Inn Team</p>
-      </div>
-    `;
-
-    return await this.sendEmail({
-      to,
-      subject,
-      html,
-    });
-  }
-
-  public async sendPasswordResetEmail(to: string, resetToken: string): Promise<boolean> {
-    const subject = 'Password Reset - Rubizz Hotel Inn';
-    const resetUrl = `${config.apiGateway.url}/reset-password?token=${resetToken}`;
-    
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #cb9c03;">Password Reset Request</h2>
-        <p>Dear Customer,</p>
-        <p>You have requested to reset your password. Click the button below to reset your password:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background-color: #cb9c03; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
-            Reset Password
-          </a>
-        </div>
-        <p>This link will expire in 1 hour for security reasons.</p>
-        <p>If you didn't request this password reset, please ignore this email.</p>
-        <p>Best regards,<br>Rubizz Hotel Inn Team</p>
-      </div>
-    `;
-
-    return await this.sendEmail({
-      to,
-      subject,
-      html,
-    });
-  }
-
-  public async sendOTPEmail(to: string, otp: string): Promise<boolean> {
-    const subject = 'OTP Verification - Rubizz Hotel Inn';
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #cb9c03;">OTP Verification</h2>
-        <p>Dear Customer,</p>
-        <p>Your OTP for verification is:</p>
-        <div style="background-color: #f5f5f5; padding: 20px; margin: 20px 0; text-align: center;">
-          <h1 style="color: #cb9c03; font-size: 32px; margin: 0;">${otp}</h1>
-        </div>
-        <p>This OTP will expire in 5 minutes.</p>
-        <p>If you didn't request this OTP, please ignore this email.</p>
-        <p>Best regards,<br>Rubizz Hotel Inn Team</p>
-      </div>
-    `;
-
-    return await this.sendEmail({
-      to,
-      subject,
-      html,
-    });
-  }
-
-  public async verifyConnection(useBrevo: boolean = true): Promise<boolean> {
-    const transporter = useBrevo ? this.brevoTransporter : this.smtpTransporter;
-    const provider = useBrevo ? 'Brevo' : 'SMTP';
-
     try {
-      await transporter.verify();
-      logger.info(`${provider} email connection verified successfully`);
-      return true;
-    } catch (error) {
-      logger.error(`${provider} email connection verification failed:`, error);
+      const response = await this.mailServiceClient.post('/api/v1/mail/send-template', {
+        templateName: 'hall_booking_cancellation',
+        to,
+        variables: {
+          bookingType: cancellationDetails.type.toUpperCase(),
+          bookingId: cancellationDetails.bookingId,
+          refundAmount: cancellationDetails.refundAmount?.toFixed(2) || '0',
+          hasRefund: cancellationDetails.refundAmount ? 'true' : 'false',
+        },
+      });
+
+      if (response.data.success) {
+        logger.info('Cancellation notification email sent successfully via mail-service', {
+          to,
+          bookingId: cancellationDetails.bookingId,
+          emailId: response.data.data?.emailId,
+        });
+        return true;
+      } else {
+        logger.error('Failed to send cancellation notification email via mail-service', {
+          to,
+          bookingId: cancellationDetails.bookingId,
+          error: response.data.error?.message,
+        });
+        return false;
+      }
+    } catch (error: any) {
+      logger.error('Error sending cancellation notification email:', error, {
+        to,
+        bookingId: cancellationDetails.bookingId,
+        errorMessage: error.response?.data?.error?.message || error.message,
+      });
       return false;
     }
   }
 
-  public async closeConnections(): Promise<void> {
+  public async sendPasswordResetEmail(to: string, resetToken: string): Promise<boolean> {
     try {
-      await Promise.all([
-        this.smtpTransporter.close(),
-        this.brevoTransporter.close(),
-      ]);
-      logger.info('Email connections closed successfully');
+      const resetUrl = `${config.apiGateway.url}/reset-password?token=${resetToken}`;
+
+      const response = await this.mailServiceClient.post('/api/v1/mail/send-template', {
+        templateName: 'hall_password_reset',
+        to,
+        variables: {
+          resetUrl,
+        },
+      });
+
+      if (response.data.success) {
+        logger.info('Password reset email sent successfully via mail-service', {
+          to,
+          emailId: response.data.data?.emailId,
+        });
+        return true;
+      } else {
+        logger.error('Failed to send password reset email via mail-service', {
+          to,
+          error: response.data.error?.message,
+        });
+        return false;
+      }
+    } catch (error: any) {
+      logger.error('Error sending password reset email:', error, {
+        to,
+        errorMessage: error.response?.data?.error?.message || error.message,
+      });
+      return false;
+    }
+  }
+
+  public async sendOTPEmail(to: string, otp: string): Promise<boolean> {
+    try {
+      const response = await this.mailServiceClient.post('/api/v1/mail/send-template', {
+        templateName: 'hall_otp_verification',
+        to,
+        variables: {
+          otp,
+        },
+      });
+
+      if (response.data.success) {
+        logger.info('OTP email sent successfully via mail-service', {
+          to,
+          emailId: response.data.data?.emailId,
+        });
+        return true;
+      } else {
+        logger.error('Failed to send OTP email via mail-service', {
+          to,
+          error: response.data.error?.message,
+        });
+        return false;
+      }
+    } catch (error: any) {
+      logger.error('Error sending OTP email:', error, {
+        to,
+        errorMessage: error.response?.data?.error?.message || error.message,
+      });
+      return false;
+    }
+  }
+
+  public async verifyConnection(): Promise<boolean> {
+    try {
+      const response = await this.mailServiceClient.get('/health');
+      logger.info('Mail service connection verified successfully');
+      return response.status === 200;
     } catch (error) {
-      logger.error('Error closing email connections:', error);
+      logger.error('Mail service connection verification failed:', error);
+      return false;
     }
   }
 }
